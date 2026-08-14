@@ -1,0 +1,206 @@
+/* Storefront content refresh: hero CTA, product chooser and compact footer. */
+.welcome-card h1 {
+  margin-bottom: 1.35rem;
+}
+
+.welcome-card h1 + p {
+  margin-top: 0;
+}
+
+.hero-content {
+  bottom: 45px;
+  left: 50%;
+  width: auto;
+  margin: 0;
+  padding: 0;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+.hero-content .button {
+  white-space: nowrap;
+}
+
+.hero-slider-controls,
+.hero-index {
+  display: none;
+}
+
+.collection-grid {
+  margin-top: 0;
+}
+
+.sale-filters {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 3rem;
+}
+
+.product-showcase {
+  grid-template-columns: minmax(0, 1.12fr) minmax(350px, .88fr);
+  align-items: stretch;
+}
+
+.product-showcase .product-gallery {
+  min-height: 620px;
+  background: #f4f0ec;
+}
+
+.product-showcase .product-gallery img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: opacity .3s ease, transform .6s ease;
+}
+
+.product-configurator {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0;
+  padding: clamp(3rem, 6vw, 7rem);
+}
+
+.product-configurator .eyebrow {
+  margin: 0 0 1.15rem;
+}
+
+.color-swatches,
+.journal-sizes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .8rem;
+}
+
+.color-swatches {
+  margin-bottom: 2.5rem;
+}
+
+.color-swatch {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid rgba(28, 27, 25, .16);
+  border-radius: 50%;
+  background: var(--swatch);
+  cursor: pointer;
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+
+.color-swatch::after {
+  position: absolute;
+  inset: -5px;
+  border: 1px solid #1c1b19;
+  border-radius: inherit;
+  content: '';
+  opacity: 0;
+  transform: scale(.82);
+  transition: opacity .2s ease, transform .2s ease;
+}
+
+.color-swatch:hover,
+.color-swatch:focus-visible {
+  transform: scale(1.08);
+}
+
+.color-swatch:focus-visible,
+.journal-sizes button:focus-visible {
+  outline: 2px solid #1c1b19;
+  outline-offset: 4px;
+}
+
+.color-swatch.active::after {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.size-label {
+  margin-top: .3rem !important;
+}
+
+.journal-sizes {
+  margin-bottom: 2.5rem;
+}
+
+.journal-sizes button {
+  min-width: 48px;
+  min-height: 45px;
+  padding: .65rem .9rem;
+  border: 1px solid rgba(28, 27, 25, .22);
+  background: transparent;
+  color: #1c1b19;
+  cursor: pointer;
+  font: inherit;
+  font-size: .74rem;
+  letter-spacing: .08em;
+  transition: background .2s ease, color .2s ease, border-color .2s ease;
+}
+
+.journal-sizes button:hover,
+.journal-sizes button.active {
+  border-color: #1c1b19;
+  background: #1c1b19;
+  color: #fff;
+}
+
+.journal-add-cart {
+  align-self: flex-start;
+  min-width: min(100%, 270px);
+}
+
+.footer-brand img {
+  display: block;
+}
+
+.footer-social a {
+  display: inline-flex;
+  align-items: center;
+  gap: .7rem;
+}
+
+.footer-social a i {
+  width: 1.05rem;
+  font-size: 1rem;
+  text-align: center;
+}
+
+@media (max-width: 1400px) {
+  .product-showcase .product-gallery { min-height: 560px; }
+}
+
+@media (max-width: 1200px) {
+  .product-configurator { padding: 4.5rem; }
+}
+
+@media (max-width: 992px) {
+  .product-showcase { grid-template-columns: 1fr 1fr; }
+  .product-showcase .product-gallery { min-height: 500px; }
+  .product-configurator { padding: 3.5rem; }
+}
+
+@media (max-width: 768px) {
+  .hero-content { bottom: 45px; }
+  .product-showcase { grid-template-columns: 1fr; }
+  .product-showcase .product-gallery { min-height: 540px; }
+  .product-configurator { padding: 3rem 1.5rem; }
+  .journal-add-cart { width: 100%; }
+}
+
+@media (max-width: 576px) {
+  .welcome-card h1 { margin-bottom: 1.1rem; }
+  .hero-content .button { min-width: 0; padding-inline: 1.35rem; }
+  .sale-filters { margin-bottom: 2rem; }
+  .product-showcase .product-gallery { min-height: 460px; }
+  .color-swatch { width: 36px; height: 36px; }
+  .journal-sizes { gap: .55rem; }
+  .journal-sizes button { min-width: 43px; }
+}
+
+@media (max-width: 430px) {
+  .hero-content { bottom: 45px; }
+  .product-showcase .product-gallery { min-height: 400px; }
+  .product-configurator { padding: 2.4rem 1.2rem; }
+  .journal-sizes { gap: .45rem; }
+  .journal-sizes button { min-width: 40px; padding-inline: .65rem; }
+}
