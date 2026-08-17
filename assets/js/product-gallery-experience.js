@@ -90,9 +90,9 @@
         <p class="product-description">${product.description}</p>
         <p class="product-option-label">RENK SEÇİMİ</p>
         <div class="product-colors" role="radiogroup" aria-label="Renk seçimi">
-          <button class="product-color active" type="button" style="--color:#FDEAB9" aria-label="Krem" aria-pressed="true"></button>
-          <button class="product-color" type="button" style="--color:#E7A5AB" aria-label="Pudra pembe" aria-pressed="false"></button>
-          <button class="product-color" type="button" style="--color:#A7CBDD" aria-label="Mavi" aria-pressed="false"></button>
+          <button class="product-color active" type="button" style="--color:#FDEAB9" data-color="#FDEAB9" data-color-name="Krem" aria-label="Krem" aria-pressed="true"></button>
+          <button class="product-color" type="button" style="--color:#E7A5AB" data-color="#E7A5AB" data-color-name="Pudra pembe" aria-label="Pudra pembe" aria-pressed="false"></button>
+          <button class="product-color" type="button" style="--color:#A7CBDD" data-color="#A7CBDD" data-color-name="Mavi" aria-label="Mavi" aria-pressed="false"></button>
         </div>
         <p class="product-option-label">BEDEN SEÇİMİ</p>
         <div class="product-sizes" role="radiogroup" aria-label="Beden seçimi">
@@ -192,7 +192,11 @@
         toast("Sepete eklemek için beden seçmelisin.");
         return;
       }
-      window.pelishStore?.addCart(productId, size);
+      const color = detail.querySelector(".product-color.active");
+      window.pelishStore?.addCart(productId, size, {
+        color: color?.dataset.color,
+        colorName: color?.dataset.colorName,
+      });
     });
   }
 })();

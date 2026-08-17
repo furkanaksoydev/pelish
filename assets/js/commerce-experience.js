@@ -81,6 +81,8 @@
       .map((item) => ({
         id: item.id,
         size: item.size || "",
+        color: item.color || "",
+        colorName: item.colorName || "",
         quantity: Math.max(1, Number(item.quantity) || 1),
       }));
   };
@@ -111,15 +113,21 @@
       .querySelectorAll("[data-cart-count]")
       .forEach((element) => (element.textContent = cartCount || ""));
   };
-  const addCart = (id, size = "") => {
+  const addCart = (id, size = "", colorSelection = {}) => {
     if (!catalog[id]) return;
     const cart = getCart();
-    const line = cart.find((item) => item.id === id && item.size === size);
+    const color = colorSelection.color || "";
+    const colorName = colorSelection.colorName || "";
+    const line = cart.find(
+      (item) => item.id === id && item.size === size && item.color === color,
+    );
     if (line) line.quantity += 1;
-    else cart.push({ id, size, quantity: 1 });
+    else cart.push({ id, size, color, colorName, quantity: 1 });
     setCart(cart);
     updateCounts();
-    toast(`${catalog[id].name}${size ? ` · ${size}` : ""} sepetine eklendi.`);
+    toast(
+      `${catalog[id].name}${size ? ` · ${size}` : ""}${colorName ? ` · ${colorName}` : ""} sepetine eklendi.`,
+    );
   };
   const toggleFavorite = (id) => {
     const favorites = getList("favorites");
@@ -404,7 +412,7 @@
       saved.innerHTML = items
         .map((item) => {
           const product = catalog[item.id];
-          return `<article class="saved-card"><a href="urun.html?id=${item.id}"><img src="${product.image}" alt="${product.name}"></a><div class="saved-card-copy"><small>${product.category}</small><h2>${product.name}</h2><strong>${product.price}</strong>${item.size ? `<small class="cart-size">Beden: ${item.size}</small>` : ""}<div class="saved-card-actions cart-line-actions"><div class="quantity-control" aria-label="${product.name} adet seçimi"><button type="button" data-quantity-minus data-cart-id="${item.id}" data-cart-size="${item.size}" ${item.quantity === 1 ? "disabled" : ""} aria-label="Adedi azalt">−</button><output>${item.quantity} adet</output><button type="button" data-quantity-plus data-cart-id="${item.id}" data-cart-size="${item.size}" aria-label="Adedi artır">+</button></div><button type="button" data-cart-remove data-cart-id="${item.id}" data-cart-size="${item.size}">Kaldır</button></div></div></article>`;
+          return `<article class="saved-card"><a href="urun.html?id=${item.id}"><img src="${product.image}" alt="${product.name}"></a><div class="saved-card-copy"><small>${product.category}</small><h2>${product.name}</h2><strong>${product.price}</strong><div class="cart-variants">${item.size ? `<small class="cart-size">Beden: ${item.size}</small>` : ""}${item.color ? `<small class="cart-color"><i style="--cart-color:${item.color}"></i>Renk: ${item.colorName || item.color}</small>` : ""}</div><div class="saved-card-actions cart-line-actions"><div class="quantity-control" aria-label="${product.name} adet seçimi"><button type="button" data-quantity-minus data-cart-id="${item.id}" data-cart-size="${item.size}" data-cart-color="${item.color}" ${item.quantity === 1 ? "disabled" : ""} aria-label="Adedi azalt">−</button><output>${item.quantity} adet</output><button type="button" data-quantity-plus data-cart-id="${item.id}" data-cart-size="${item.size}" data-cart-color="${item.color}" aria-label="Adedi artır">+</button></div><button type="button" data-cart-remove data-cart-id="${item.id}" data-cart-size="${item.size}" data-cart-color="${item.color}">Kaldır</button></div></div></article>`;
         })
         .join("");
       saved.querySelectorAll("[data-quantity-plus]").forEach((button) =>
@@ -413,7 +421,8 @@
           const line = cart.find(
             (item) =>
               item.id === button.dataset.cartId &&
-              item.size === button.dataset.cartSize,
+              item.size === button.dataset.cartSize &&
+              item.color === button.dataset.cartColor,
           );
           if (line) line.quantity += 1;
           setCart(cart);
@@ -426,7 +435,8 @@
           const line = cart.find(
             (item) =>
               item.id === button.dataset.cartId &&
-              item.size === button.dataset.cartSize,
+              item.size === button.dataset.cartSize &&
+              item.color === button.dataset.cartColor,
           );
           if (!line || line.quantity <= 1) return;
           line.quantity -= 1;
@@ -440,7 +450,8 @@
             getCart().filter(
               (item) =>
                 item.id !== button.dataset.cartId ||
-                item.size !== button.dataset.cartSize,
+                item.size !== button.dataset.cartSize ||
+                item.color !== button.dataset.cartColor,
             ),
           );
           refreshCart();
