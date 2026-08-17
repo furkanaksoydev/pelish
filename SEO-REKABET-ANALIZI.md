@@ -1,6 +1,6 @@
 # pelish — Tekirdağ yerel SEO ve rakip analizi
 
-Tarih: 17 Ağustos 2026  
+Tarih: 17 Ağustos 2026
 Kapsam: Tekirdağ / Süleymanpaşa ve Tekirdağ / Kumbağ için kadın giyim odaklı organik arama görünürlüğü.
 
 ## Araştırma özeti
