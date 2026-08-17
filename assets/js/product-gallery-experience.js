@@ -12,14 +12,6 @@
     );
   };
 
-  const cartSizes = () =>
-    JSON.parse(localStorage.getItem("pelish-cart-sizes") || "{}");
-  const saveCartSize = (id, size) => {
-    const sizes = cartSizes();
-    sizes[id] = size;
-    localStorage.setItem("pelish-cart-sizes", JSON.stringify(sizes));
-  };
-
   document.querySelectorAll(".quick-card .sizes button").forEach((button) => {
     button.addEventListener("click", () => {
       document.querySelectorAll(".quick-card .sizes button").forEach((item) => {
@@ -56,8 +48,6 @@
         toast("Sepete eklemek için beden seçmelisin.");
         return;
       }
-      const id = document.querySelector("#quickModal")?.dataset.productId;
-      if (id) saveCartSize(id, size);
     },
     true,
   );
@@ -202,32 +192,7 @@
         toast("Sepete eklemek için beden seçmelisin.");
         return;
       }
-      const cart = JSON.parse(localStorage.getItem("pelish-cart") || "[]");
-      if (!cart.includes(productId))
-        localStorage.setItem(
-          "pelish-cart",
-          JSON.stringify([...cart, productId]),
-        );
-      saveCartSize(productId, size);
-      document.querySelectorAll("[data-cart-count]").forEach((item) => {
-        item.textContent = JSON.parse(
-          localStorage.getItem("pelish-cart") || "[]",
-        ).length;
-      });
-      toast(`${product.name} (${size}) sepete eklendi.`);
+      window.pelishStore?.addCart(productId, size);
     });
   }
-
-  const sizes = cartSizes();
-  document.querySelectorAll(".saved-card").forEach((card) => {
-    const id = new URL(
-      card.querySelector("a")?.href || location.href,
-    ).searchParams.get("id");
-    if (!id || !sizes[id]) return;
-    const note = document.createElement("small");
-    note.textContent = `Beden: ${sizes[id]}`;
-    card
-      .querySelector(".saved-card-copy")
-      ?.insertBefore(note, card.querySelector(".saved-card-actions"));
-  });
 })();
