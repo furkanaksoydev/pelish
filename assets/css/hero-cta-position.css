@@ -1,0 +1,23 @@
+/* Unified navigation and precise hero call-to-action placement. */
+.hero-content {
+  position: absolute;
+  top: auto;
+  right: auto;
+  bottom: 80px;
+  left: 50%;
+  width: auto;
+  margin: 0;
+  padding: 0;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+.hero-content .button {
+  justify-content: center;
+}
+
+@media (max-width: 768px) {
+  .hero-content {
+    bottom: 80px;
+  }
+}
