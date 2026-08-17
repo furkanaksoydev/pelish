@@ -1,0 +1,21 @@
+(() => {
+  const body = document.body;
+  const menu = document.querySelector('#sideMenu');
+  const menuButton = document.querySelector('#menuButton');
+  const closeMenu = document.querySelector('[data-menu-close]');
+  const toast = document.querySelector('#toast');
+  const toastText = document.querySelector('#toastText');
+  let toastTimer;
+  const showToast = (message) => { if (!toast || !toastText) return; toastText.textContent = message; toast.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove('show'), 2600); };
+  const setMenu = (isOpen) => { if (!menu || !menuButton) return; menu.classList.toggle('open', isOpen); menu.setAttribute('aria-hidden', String(!isOpen)); menuButton.setAttribute('aria-expanded', String(isOpen)); body.classList.toggle('lock', isOpen); };
+  menuButton?.addEventListener('click', () => setMenu(!menu.classList.contains('open')));
+  closeMenu?.addEventListener('click', () => setMenu(false));
+  document.querySelectorAll('.side-menu a').forEach((link) => link.addEventListener('click', () => setMenu(false)));
+  document.querySelectorAll('[data-filter]').forEach((button) => button.addEventListener('click', () => { const filter = button.dataset.filter; document.querySelectorAll('[data-filter]').forEach((item) => item.classList.toggle('active', item === button)); document.querySelectorAll('.sale-card').forEach((card) => card.classList.toggle('is-hidden', filter !== 'all' && card.dataset.category !== filter)); }));
+  document.querySelectorAll('[data-add-cart]').forEach((button) => button.addEventListener('click', () => showToast(`${button.dataset.addCart} sepete eklendi.`)));
+  document.querySelectorAll('[data-favorite]').forEach((button) => button.addEventListener('click', () => { button.classList.toggle('liked'); button.textContent = button.classList.contains('liked') ? '♥' : '♡'; showToast(button.classList.contains('liked') ? 'Favorilerine eklendi.' : 'Favorilerinden çıkarıldı.'); }));
+  document.querySelectorAll('.faq-question').forEach((button) => button.addEventListener('click', () => { const item = button.closest('.faq-item'); const isOpen = item.classList.toggle('open'); button.setAttribute('aria-expanded', String(isOpen)); }));
+  document.querySelectorAll('[data-inquiry-form]').forEach((form) => form.addEventListener('submit', (event) => { event.preventDefault(); const status = form.querySelector('.form-status'); if (status) status.textContent = 'Mesajın alındı. En kısa sürede dönüş yapacağız.'; form.reset(); }));
+  document.querySelectorAll('[data-newsletter-form]').forEach((form) => form.addEventListener('submit', (event) => { event.preventDefault(); showToast('E-posta adresin listeye eklendi.'); form.reset(); }));
+  document.querySelector('[data-toast-close]')?.addEventListener('click', () => toast?.classList.remove('show'));
+})();
