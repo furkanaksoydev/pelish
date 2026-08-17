@@ -1,5 +1,13 @@
 /* Non-home pages begin in the same visual state as the scrolled home header. */
-.secondary-page .site-header,
+.secondary-page .site-header {
+  position: absolute !important;
+  top: 35px !important;
+  background: #f6f4f0ed !important;
+  color: var(--ink) !important;
+  border-color: var(--line) !important;
+  backdrop-filter: blur(16px) !important;
+}
+
 .secondary-page .site-header.scrolled {
   position: fixed !important;
   top: 0 !important;
@@ -35,6 +43,14 @@
 }
 
 @media (max-width: 768px) {
+  .secondary-page .site-header {
+    top: 29px !important;
+  }
+
+  .secondary-page .site-header.scrolled {
+    top: 0 !important;
+  }
+
   .secondary-page .site-header .brand img,
   .secondary-page .site-header.scrolled .brand img {
     width: 132px;
