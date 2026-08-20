@@ -94,4 +94,30 @@
     const size = (file.size / 1024 / 1024).toFixed(2);
     note.textContent = `${file.name} · ${size} MB · kaydettiğinizde R2’ye yüklenecek.`;
   }));
+
+  const categorySelect = document.querySelector('[data-category-select]');
+  const newCategoryField = document.querySelector('[data-new-category-field]');
+  const syncCategoryField = () => {
+    if (!categorySelect || !newCategoryField) return;
+    const show = categorySelect.value === '__new__';
+    newCategoryField.hidden = !show;
+    newCategoryField.querySelector('input')?.toggleAttribute('required', show);
+  };
+  categorySelect?.addEventListener('change', syncCategoryField);
+  syncCategoryField();
+
+  const variantList = document.querySelector('[data-variant-list]');
+  const variantTemplate = document.querySelector('#variantUploadTemplate');
+  document.querySelector('[data-add-variant]')?.addEventListener('click', () => {
+    if (!variantList || !variantTemplate) return;
+    const item = variantTemplate.content.cloneNode(true);
+    variantList.appendChild(item);
+    const row = variantList.lastElementChild;
+    row?.querySelector('.remove-variant')?.addEventListener('click', () => row.remove());
+    row?.querySelector('input[type="file"]')?.addEventListener('change', (event) => {
+      const file = event.currentTarget.files?.[0];
+      if (!file) return;
+      event.currentTarget.closest('label')?.classList.add('has-file');
+    });
+  });
 })();

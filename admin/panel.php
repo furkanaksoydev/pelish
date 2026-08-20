@@ -71,7 +71,7 @@ function panel_header(string $page, string $subTitle = '', array $subLinks = [])
   </head>
   <body>
     <div class="page-loader" id="pageLoader"><span></span><small>Yükleniyor…</small></div>
-    <header class="topline"><div class="shell"><span>PELISH CONTROL · V 1.0.0</span><div class="top-actions"><a href="../index.html" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i> Siteyi Görüntüle</a><button type="button" data-toast="Pelish destek merkezi yakında burada olacak."><i class="fa-regular fa-life-ring"></i> Destek</button></div></div></header>
+    <header class="topline"><div class="shell"><span>PELISH CONTROL · V 1.0.0</span><div class="top-actions"><a href="../index.html" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i> Siteyi Görüntüle</a></div></div></header>
     <header class="main-header">
       <div class="shell header-row">
         <a class="panel-logo" href="<?= admin_url('dashboard') ?>" aria-label="pelish panel ana sayfa"><img src="https://cdn.lavira360.com/pelish/logo.png" alt="pelish"></a>
@@ -81,12 +81,12 @@ function panel_header(string $page, string $subTitle = '', array $subLinks = [])
             <a class="<?= $key === $page || ($key === 'products' && $page === 'catalog') ? 'is-active' : '' ?>" href="<?= admin_url($key) ?>"><i class="fa-solid <?= e($icon) ?>"></i><span><?= e(mb_strtoupper($label, 'UTF-8')) ?></span><?= in_array($key, ['orders', 'products', 'marketplaces', 'vouchers', 'customers'], true) ? '<b>⌄</b>' : '' ?></a>
           <?php endforeach; ?>
         </nav>
-        <div class="header-tools"><form class="header-search" method="get" action="index.php"><input type="hidden" name="page" value="products"><i class="fa-solid fa-magnifying-glass"></i><input type="search" name="q" placeholder="Panelde ara…"></form><button type="button" class="user-button" data-toast="Pelish yönetici hesabı"><i class="fa-solid fa-user"></i></button></div>
+        <div class="header-tools"><form class="header-search" method="get" action="index.php"><input type="hidden" name="page" value="products"><i class="fa-solid fa-magnifying-glass"></i><input type="search" name="q" placeholder="Panelde ara…"></form></div>
       </div>
       <div class="mega-menu"><div class="shell menu-grid">
         <section><h3>Ürün Yönetimi</h3><a href="<?= admin_url('products') ?>">Ürünler</a><a href="<?= admin_url('catalog', ['type' => 'categories']) ?>">Kategoriler</a><a href="<?= admin_url('catalog', ['type' => 'brands']) ?>">Markalar</a><a href="<?= admin_url('catalog', ['type' => 'tags']) ?>">Etiketler</a></section>
         <section><h3>Sipariş ve müşteri</h3><a href="<?= admin_url('orders') ?>">Siparişler</a><a href="<?= admin_url('customers') ?>">Müşteriler</a><a href="<?= admin_url('vouchers') ?>">Hediye Çekleri</a><a href="<?= admin_url('reports') ?>">Satış Raporları</a></section>
-        <section><h3>Satış kanalları</h3><a href="<?= admin_url('marketplaces') ?>">Pazaryeri Mağazaları</a><a href="<?= admin_url('marketplaces') ?>#new-store">Yeni Mağaza Ekle</a></section>
+        <section><h3>Satış kanalları</h3><a href="<?= admin_url('marketplaces') ?>">Pazaryeri Mağazaları</a></section>
       </div></div>
     </header>
     <section class="subnav"><div class="shell"><div><strong><?= e($subTitle ?: $pageTitle) ?></strong><span><i class="fa-solid fa-circle-play"></i> Eğitimler</span></div><nav>
