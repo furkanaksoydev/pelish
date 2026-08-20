@@ -86,4 +86,12 @@
     submitter.classList.add('is-submitting');
     submitter.setAttribute('aria-busy', 'true');
   }));
+
+  document.querySelectorAll('[data-image-picker]').forEach((input) => input.addEventListener('change', () => {
+    const file = input.files?.[0];
+    const note = input.closest('.upload-field')?.querySelector('small');
+    if (!file || !note) return;
+    const size = (file.size / 1024 / 1024).toFixed(2);
+    note.textContent = `${file.name} · ${size} MB · kaydettiğinizde R2’ye yüklenecek.`;
+  }));
 })();

@@ -25,6 +25,12 @@ CREATE TABLE IF NOT EXISTS pelish_products (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
 SQL);
 
+$imageKeyColumn = $pdo->prepare("SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'pelish_products' AND COLUMN_NAME = 'image_key'");
+$imageKeyColumn->execute();
+if ((int) $imageKeyColumn->fetchColumn() === 0) {
+    $pdo->exec('ALTER TABLE pelish_products ADD COLUMN image_key VARCHAR(500) NULL AFTER image_url');
+}
+
 $pdo->exec(<<<'SQL'
 CREATE TABLE IF NOT EXISTS pelish_customers (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
