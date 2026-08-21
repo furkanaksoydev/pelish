@@ -7,4 +7,6 @@ DirectoryIndex index.php index.html
   RewriteRule ^urun\.html$ /pelish/urun.php [R=302,L]
   RewriteRule ^sepetim\.html$ /pelish/sepetim.php [R=302,L]
   RewriteRule ^favorilerim\.html$ /pelish/favorilerim.php [R=302,L]
+  RewriteRule ^tekirdag-suleymanpasa-kadin-giyim\.html$ /pelish/yerel-secki.php?konum=suleymanpasa [R=302,L]
+  RewriteRule ^tekirdag-kumbag-kadin-giyim\.html$ /pelish/yerel-secki.php?konum=kumbag [R=302,L]
 </IfModule>
