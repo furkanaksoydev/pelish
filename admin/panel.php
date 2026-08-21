@@ -89,7 +89,7 @@ function panel_header(string $page, string $subTitle = '', array $subLinks = [])
         <section><h3>Satış kanalları</h3><a href="<?= admin_url('marketplaces') ?>">Pazaryeri Mağazaları</a></section>
       </div></div>
     </header>
-    <section class="subnav"><div class="shell"><div><strong><?= e($subTitle ?: $pageTitle) ?></strong><?php if ($page !== 'products'): ?><span><i class="fa-solid fa-circle-play"></i> Eğitimler</span><?php endif; ?></div><nav>
+    <section class="subnav"><div class="shell"><div><strong><?= e($subTitle ?: $pageTitle) ?></strong></div><nav>
       <?php foreach ($subLinks as $link): ?><a class="<?= !empty($link['active']) ? 'active' : '' ?>" href="<?= e($link['href']) ?>"><?= e($link['label']) ?></a><?php endforeach; ?>
     </nav></div></section>
     <main class="shell panel-content <?= e($activeClass) ?>">
