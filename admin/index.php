@@ -11,7 +11,8 @@ try { $pdo->query('SELECT 1 FROM pelish_products LIMIT 1'); } catch (PDOExceptio
 admin_require_login();
 
 $pages = ['dashboard', 'products', 'orders', 'marketplaces', 'vouchers', 'customers', 'reports', 'catalog'];
-$page = in_array($_GET['page'] ?? 'dashboard', $pages, true) ? (string) $_GET['page'] : 'dashboard';
+$requestedPage = (string) ($_GET['page'] ?? 'dashboard');
+$page = in_array($requestedPage, $pages, true) ? $requestedPage : 'dashboard';
 $r2Settings = r2_settings($config);
 
 function form_value(string $key, string $default = ''): string { return trim((string) ($_POST[$key] ?? $default)); }
