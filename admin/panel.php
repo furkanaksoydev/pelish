@@ -71,7 +71,7 @@ function panel_header(string $page, string $subTitle = '', array $subLinks = [])
   </head>
   <body>
     <div class="page-loader" id="pageLoader"><span></span><small>Yükleniyor…</small></div>
-    <header class="topline"><div class="shell"><span>PELISH CONTROL · V 1.0.0</span><div class="top-actions"><a href="../index.html" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i> Siteyi Görüntüle</a></div></div></header>
+    <header class="topline"><div class="shell"><span>PELISH CONTROL · V 1.1.0</span><div class="top-actions"><a href="../index.php" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i> Siteyi Görüntüle</a><a href="account.php"><i class="fa-solid fa-gear"></i> Hesap</a><a href="logout.php"><i class="fa-solid fa-arrow-right-from-bracket"></i> Çıkış</a></div></div></header>
     <header class="main-header">
       <div class="shell header-row">
         <a class="panel-logo" href="<?= admin_url('dashboard') ?>" aria-label="pelish panel ana sayfa"><img src="https://cdn.lavira360.com/pelish/logo.png" alt="pelish"></a>

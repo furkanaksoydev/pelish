@@ -1,0 +1,10 @@
+DirectoryIndex index.php index.html
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^index\.html$ /pelish/index.php [R=302,L]
+  RewriteRule ^indirimler\.html$ /pelish/indirimler.php [R=302,L]
+  RewriteRule ^urun\.html$ /pelish/urun.php [R=302,L]
+  RewriteRule ^sepetim\.html$ /pelish/sepetim.php [R=302,L]
+  RewriteRule ^favorilerim\.html$ /pelish/favorilerim.php [R=302,L]
+</IfModule>

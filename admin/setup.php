@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/bootstrap.php';
+require __DIR__ . '/schema.php';
 
 $pdo->exec(<<<'SQL'
 CREATE TABLE IF NOT EXISTS pelish_products (
@@ -135,6 +136,8 @@ CREATE TABLE IF NOT EXISTS pelish_catalog_items (
     UNIQUE KEY unique_catalog_slug (type, slug)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 SQL);
+
+pelish_install_customer_features($pdo);
 
 $count = (int) $pdo->query('SELECT COUNT(*) FROM pelish_products')->fetchColumn();
 if ($count === 0) {

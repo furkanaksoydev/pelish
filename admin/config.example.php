@@ -13,4 +13,10 @@ return [
         'public_base_url' => 'https://cdn.lavira360.com',
         'key_prefix' => 'pelish/products',
     ],
+    // Kayıt doğrulama kodunu gönderen SMTP / PHP mail ayarları.
+    // Yerel XAMPP'te mail() yapılandırılmamışsa bir SMTP sağlayıcısı kullanın.
+    'mail' => [
+        'from_email' => '',
+        'from_name' => 'pelish',
+    ],
 ];
