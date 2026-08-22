@@ -39,3 +39,14 @@ admin/config.local.php
 /.wrangler/
 /outputs/
 /work/
+
+# Removed legacy frontend build artifacts and local deployment archives
+/app/
+/build/
+/db/
+/drizzle/
+/examples/
+/public/
+/tests/
+/worker/
+/pelish-site.tgz

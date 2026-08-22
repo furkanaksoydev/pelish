@@ -1,9 +1,10 @@
 # pelish.co canlıya alma notu
 
-1. Bu klasörün içeriğini hostingde `www.pelish.co` alan adının belge köküne yükleyin.
-2. `admin/config.example.php` dosyasını `admin/config.local.php` adıyla kopyalayın ve yalnızca sunucuda veritabanı, R2 ve e-posta gönderici ayarlarını girin. Bu dosya sürüm kontrolüne dahil edilmez.
-3. Tarayıcıda bir kez `/admin/setup.php` yolunu açın. Kurulum yalnızca şemayı ve başlangıç yönetici hesabını oluşturur; ürün, müşteri, kupon veya katalog örneği eklemez.
-4. Cloudflare R2 custom domaininin DNS yayılımı tamamlandığında ürün görselleri `https://cdn.pelish.co/products/...` adresinde yayınlanır.
-5. Hostingde PHP 8.0+, PDO MySQL, cURL, Fileinfo ve Apache `mod_rewrite` etkin olmalıdır.
+Yüklemeye hazır dosyalar proje dışındaki `C:\xampp\htdocs\pelish-canli-yukleme` klasöründe, aynı içeriğin ZIP sürümü ise `C:\xampp\htdocs\pelish-canli-yukleme.zip` dosyasındadır. Hostingin belge köküne yalnızca bu paketin **içeriğini** yükleyin.
 
-`config.local.php` web erişimine kapatılmıştır. Bu dosyayı yalnızca güvenli dosya aktarımıyla yükleyin.
+1. `admin/config.example.php` dosyasını sunucuda `admin/config.local.php` adıyla kopyalayın; veritabanı, R2 ve e-posta gönderici ayarlarını sadece bu sunucu dosyasına yazın.
+2. Bir kez `https://www.pelish.co/admin/setup.php` yolunu açın. Kurulum yalnızca şemayı ve başlangıç yönetici hesabını oluşturur; örnek ürün, müşteri, kupon veya katalog verisi eklemez.
+3. İlk ürün görseli yüklemesini admin panelinden yaparak R2 bağlantısını doğrulayın. Görseller `https://cdn.pelish.co/products/...` yolundan sunulur.
+4. Hostingde PHP 8.0+, PDO MySQL, cURL, Fileinfo ve Apache `mod_rewrite` etkin olmalıdır.
+
+Paket; Git geçmişi, Node/Next/Vite dosyaları, testler, önbellekler, eski statik ekranlar, eski arşiv ve `config.local.php` dosyasını içermez. `.htaccess`, `config.local.php` dosyasını web erişimine ayrıca kapatır.
