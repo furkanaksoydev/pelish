@@ -68,11 +68,12 @@ function store_product_card(PDO $pdo, array $product, array $favoriteIds = []): 
 {
     $image = $product['image_url'] ?: 'https://images.unsplash.com/photo-1485968579580-b6d095142e6e?auto=format&fit=crop&w=900&q=85';
     $isFavorite = in_array((int) $product['id'], $favoriteIds, true);
+    $price = store_product_price($product);
     ?>
     <article class="product-card db-product-card" data-category="<?= e($product['category']) ?>">
-      <a class="product-image" href="urun.php?id=<?= (int) $product['id'] ?>"><img src="<?= e($image) ?>" alt="<?= e($product['name']) ?>"><?php if ((float) $product['list_price'] > (float) $product['sale_price']): ?><mark><span>✦</span> İndirim</mark><?php endif; ?></a>
+      <a class="product-image" href="urun.php?id=<?= (int) $product['id'] ?>"><img src="<?= e($image) ?>" alt="<?= e($product['name']) ?>"><?php if ($price['is_discounted']): ?><mark><span>−<?= $price['discount_percent'] ?>%</span> İndirim</mark><?php endif; ?></a>
       <div class="product-actions"><form method="post" action="store/action.php"><input type="hidden" name="csrf" value="<?= e(store_csrf()) ?>"><input type="hidden" name="action" value="favorite"><input type="hidden" name="product_id" value="<?= (int) $product['id'] ?>"><input type="hidden" name="return_to" value="<?= e($_SERVER['REQUEST_URI'] ?? 'index.php') ?>"><button class="heart <?= $isFavorite ? 'liked' : '' ?>" type="submit" aria-label="<?= $isFavorite ? 'Favoriden çıkar' : 'Favoriye ekle' ?>"><span><?= $isFavorite ? '♥' : '♡' ?></span></button></form><a class="quick-view" href="urun.php?id=<?= (int) $product['id'] ?>">İncele</a></div>
-      <a class="product-info" href="urun.php?id=<?= (int) $product['id'] ?>"><div><small><?= e($product['category']) ?></small><h3><?= e($product['name']) ?></h3></div><strong><?php if ((float) $product['list_price'] > (float) $product['sale_price']): ?><del><?= store_money((float) $product['list_price']) ?></del> <?php endif; ?><?= store_money((float) $product['sale_price']) ?></strong></a>
+      <a class="product-info" href="urun.php?id=<?= (int) $product['id'] ?>"><div><small><?= e($product['category']) ?></small><h3><?= e($product['name']) ?></h3></div><strong><?php if ($price['is_discounted']): ?><del><?= store_money($price['original']) ?></del><?php endif; ?><span><?= store_money($price['current']) ?></span></strong></a>
     </article>
     <?php
 }

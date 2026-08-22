@@ -8,6 +8,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') { store_redirect('../index.php'); }
 store_verify_csrf();
 $action = (string) ($_POST['action'] ?? '');
 $returnTo = store_safe_return($_POST['return_to'] ?? null);
+// Adet ve satır silme yalnızca sepet bağlamında çalışır. Dönüş adresi
+// istemciden gelse bile bu işlemleri sepet ekranına sabitliyoruz.
+if (in_array($action, ['cart-quantity', 'cart-remove'], true)) {
+    $returnTo = 'sepetim.php';
+}
 $productId = (int) ($_POST['product_id'] ?? 0);
 $pending = [
     'type' => $action,

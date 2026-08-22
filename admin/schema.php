@@ -35,12 +35,32 @@ function pelish_run_migrations(PDO $pdo): void
     }
     $pdo->exec('CREATE TABLE IF NOT EXISTS pelish_schema_migrations (version VARCHAR(80) NOT NULL PRIMARY KEY, applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
     $version = 'customer-email-security-v1';
+    if (!pelish_migration_applied($pdo, $version)) {
+        pelish_install_customer_features($pdo);
+        pelish_mark_migration($pdo, $version);
+    }
+
+    // Müşteri hesabında kimlik, e-posta adresidir. Eski kullanıcı adı alanı
+    // yalnızca geçmiş sürümlerde kullanılıyordu; bu geçiş veri kaybetmeden
+    // hesabın diğer tüm alanlarını koruyarak alanı kaldırır.
+    $version = 'customer-email-only-identity-v1';
+    if (!pelish_migration_applied($pdo, $version)) {
+        pelish_drop_column($pdo, 'pelish_email_verifications', 'username');
+        pelish_drop_column($pdo, 'pelish_customers', 'username');
+        pelish_mark_migration($pdo, $version);
+    }
+}
+
+function pelish_migration_applied(PDO $pdo, string $version): bool
+{
     $exists = $pdo->prepare('SELECT COUNT(*) FROM pelish_schema_migrations WHERE version = ?');
     $exists->execute([$version]);
-    if ((int) $exists->fetchColumn() === 0) {
-        pelish_install_customer_features($pdo);
-        $pdo->prepare('INSERT INTO pelish_schema_migrations (version) VALUES (?)')->execute([$version]);
-    }
+    return (int) $exists->fetchColumn() > 0;
+}
+
+function pelish_mark_migration(PDO $pdo, string $version): void
+{
+    $pdo->prepare('INSERT INTO pelish_schema_migrations (version) VALUES (?)')->execute([$version]);
 }
 
 function pelish_add_column(PDO $pdo, string $table, string $column, string $definition): void
@@ -50,9 +70,15 @@ function pelish_add_column(PDO $pdo, string $table, string $column, string $defi
     }
 }
 
+function pelish_drop_column(PDO $pdo, string $table, string $column): void
+{
+    if (pelish_table_exists($pdo, $table) && pelish_column_exists($pdo, $table, $column)) {
+        $pdo->exec("ALTER TABLE `{$table}` DROP COLUMN `{$column}`");
+    }
+}
+
 function pelish_install_customer_features(PDO $pdo): void
 {
-    pelish_add_column($pdo, 'pelish_customers', 'username', 'VARCHAR(80) NULL UNIQUE AFTER id');
     pelish_add_column($pdo, 'pelish_customers', 'password_hash', 'VARCHAR(255) NULL AFTER phone');
     pelish_add_column($pdo, 'pelish_customers', 'email_verified_at', 'DATETIME NULL AFTER password_hash');
     pelish_add_column($pdo, 'pelish_customers', 'last_login_at', 'DATETIME NULL AFTER email_verified_at');
@@ -60,7 +86,6 @@ function pelish_install_customer_features(PDO $pdo): void
     $pdo->exec(<<<'SQL'
 CREATE TABLE IF NOT EXISTS pelish_email_verifications (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    username VARCHAR(80) NOT NULL,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     email VARCHAR(190) NOT NULL,
@@ -72,7 +97,6 @@ CREATE TABLE IF NOT EXISTS pelish_email_verifications (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     UNIQUE KEY unique_verification_email (email),
-    UNIQUE KEY unique_verification_username (username),
     INDEX idx_verification_expires (expires_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

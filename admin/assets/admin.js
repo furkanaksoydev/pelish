@@ -87,13 +87,50 @@
     submitter.setAttribute('aria-busy', 'true');
   }));
 
-  document.querySelectorAll('[data-image-picker]').forEach((input) => input.addEventListener('change', () => {
-    const file = input.files?.[0];
-    const note = input.closest('.upload-field')?.querySelector('small');
-    if (!file || !note) return;
-    const size = (file.size / 1024 / 1024).toFixed(2);
-    note.textContent = `${file.name} · ${size} MB · kaydettiğinizde R2’ye yüklenecek.`;
-  }));
+  const imageUpload = document.querySelector('[data-product-image-upload]');
+  const pendingImageList = document.querySelector('[data-product-image-list]');
+  const renderPendingImages = () => {
+    if (!imageUpload || !pendingImageList) return;
+    pendingImageList.replaceChildren();
+    Array.from(imageUpload.files || []).forEach((file, index) => {
+      const card = document.createElement('article');
+      card.className = 'pending-image-card';
+      const preview = document.createElement('img');
+      preview.src = URL.createObjectURL(file);
+      preview.alt = `${file.name} önizleme`;
+      preview.addEventListener('load', () => URL.revokeObjectURL(preview.src), { once: true });
+      const meta = document.createElement('div');
+      const title = document.createElement('strong');
+      title.textContent = file.name;
+      const size = document.createElement('small');
+      size.textContent = `${(file.size / 1024 / 1024).toFixed(2)} MB`;
+      meta.append(title, size);
+      const primary = document.createElement('label');
+      primary.className = 'pending-primary';
+      const primaryInput = document.createElement('input');
+      primaryInput.type = 'radio';
+      primaryInput.name = 'primary_upload_index';
+      primaryInput.value = String(index);
+      primaryInput.checked = index === 0;
+      primary.append(primaryInput, document.createTextNode(' Ana görsel'));
+      const colorName = document.createElement('label');
+      colorName.textContent = 'Renk adı';
+      const colorNameInput = document.createElement('input');
+      colorNameInput.name = 'image_color_names[]';
+      colorNameInput.placeholder = 'Örn. Kırmızı';
+      colorName.append(colorNameInput);
+      const colorHex = document.createElement('label');
+      colorHex.textContent = 'Renk kodu';
+      const colorHexInput = document.createElement('input');
+      colorHexInput.type = 'color';
+      colorHexInput.name = 'image_color_hexes[]';
+      colorHexInput.value = '#111111';
+      colorHex.append(colorHexInput);
+      card.append(preview, meta, primary, colorName, colorHex);
+      pendingImageList.append(card);
+    });
+  };
+  imageUpload?.addEventListener('change', renderPendingImages);
 
   const categorySelect = document.querySelector('[data-category-select]');
   const newCategoryField = document.querySelector('[data-new-category-field]');
@@ -106,18 +143,4 @@
   categorySelect?.addEventListener('change', syncCategoryField);
   syncCategoryField();
 
-  const variantList = document.querySelector('[data-variant-list]');
-  const variantTemplate = document.querySelector('#variantUploadTemplate');
-  document.querySelector('[data-add-variant]')?.addEventListener('click', () => {
-    if (!variantList || !variantTemplate) return;
-    const item = variantTemplate.content.cloneNode(true);
-    variantList.appendChild(item);
-    const row = variantList.lastElementChild;
-    row?.querySelector('.remove-variant')?.addEventListener('click', () => row.remove());
-    row?.querySelector('input[type="file"]')?.addEventListener('change', (event) => {
-      const file = event.currentTarget.files?.[0];
-      if (!file) return;
-      event.currentTarget.closest('label')?.classList.add('has-file');
-    });
-  });
 })();

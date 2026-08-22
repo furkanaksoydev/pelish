@@ -27,8 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     else {
         try {
             $pdo->beginTransaction();
-            $create = $pdo->prepare('INSERT INTO pelish_customers (username, first_name, last_name, email, phone, password_hash, email_verified_at, is_active) VALUES (?, ?, ?, ?, ?, ?, NOW(), 1)');
-            $create->execute([$verification['username'], $verification['first_name'], $verification['last_name'], $verification['email'], $verification['phone'], $verification['password_hash']]);
+            $create = $pdo->prepare('INSERT INTO pelish_customers (first_name, last_name, email, phone, password_hash, email_verified_at, is_active) VALUES (?, ?, ?, ?, ?, NOW(), 1)');
+            $create->execute([$verification['first_name'], $verification['last_name'], $verification['email'], $verification['phone'], $verification['password_hash']]);
             $customerId = (int) $pdo->lastInsertId();
             $pdo->prepare('DELETE FROM pelish_email_verifications WHERE id=?')->execute([$verification['id']]);
             $pdo->commit();
@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             store_redirect('index.php');
         } catch (Throwable $exception) {
             if ($pdo->inTransaction()) { $pdo->rollBack(); }
-            store_flash('danger', 'Hesap oluşturulamadı. Kullanıcı adı veya e-posta artık kullanılıyor olabilir.');
+            store_flash('danger', 'Hesap oluşturulamadı. E-posta adresi artık kullanılıyor olabilir.');
         }
     }
 }

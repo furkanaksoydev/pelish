@@ -14,6 +14,33 @@ function store_money(float $value): string
     return '₺' . number_format($value, 2, ',', '.');
 }
 
+/**
+ * İki fiyat girildiğinde yüksek olan eski/liste fiyatı, düşük olan ise
+ * müşterinin ödeyeceği fiyat olur. Böylece yönetimde fiyatların giriş sırası
+ * değişse bile vitrinde indirim her zaman doğru ve anlaşılır gösterilir.
+ *
+ * @return array{current: float, original: float, discount_percent: int, is_discounted: bool}
+ */
+function store_product_price(array $product): array
+{
+    $sale = max(0, (float) ($product['sale_price'] ?? 0));
+    $list = max(0, (float) ($product['list_price'] ?? 0));
+    $prices = array_values(array_filter([$sale, $list], static fn(float $price): bool => $price > 0));
+    if (!$prices) {
+        return ['current' => 0.0, 'original' => 0.0, 'discount_percent' => 0, 'is_discounted' => false];
+    }
+    $original = max($prices);
+    $current = count($prices) > 1 ? min($prices) : $original;
+    $isDiscounted = count($prices) > 1 && $original > $current;
+
+    return [
+        'current' => $current,
+        'original' => $original,
+        'discount_percent' => $isDiscounted ? (int) round((($original - $current) / $original) * 100) : 0,
+        'is_discounted' => $isDiscounted,
+    ];
+}
+
 function store_csrf(): string
 {
     if (empty($_SESSION['pelish_store_csrf'])) {
