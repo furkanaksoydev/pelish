@@ -267,7 +267,9 @@ function store_send_verification_email(array $mail, string $to, string $code): b
     }
 
     stream_set_timeout($connection, $timeout);
-    $hostname = preg_replace('/[^A-Za-z0-9.-]/', '', (string) (gethostname() ?: 'pelish.co')) ?: 'pelish.co';
+    // Güzel Hosting Exim sunucusu alan adıyla yapılan EHLO çağrısını taklit
+    // olarak reddedebildiği için güvenli ve yerel bir HELO kimliği kullanılır.
+    $hostname = 'localhost';
     $name = trim(str_replace(["\r", "\n"], '', (string) ($mail['from_name'] ?? 'pelish'))) ?: 'pelish';
     $subject = 'pelish kayıt doğrulama kodun';
     $body = "Merhaba,\n\npelish hesabını oluşturmak için doğrulama kodun: {$code}\n\nBu kod 3 dakika geçerlidir. Eğer bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.";
