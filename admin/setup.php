@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 require __DIR__ . '/bootstrap.php';
-require __DIR__ . '/schema.php';
+require_once __DIR__ . '/schema.php';
 
 /*
  * Kurulum yalnızca boş sistemlerde çalışır. Başlangıç yönetici hesabı
@@ -152,7 +152,7 @@ CREATE TABLE IF NOT EXISTS pelish_catalog_items (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 SQL);
 
-pelish_install_customer_features($pdo);
+pelish_run_migrations($pdo);
 
 header('Location: index.php?notice=setup-complete');
 exit;

@@ -85,6 +85,32 @@
   }));
   $$(".detail-sizes input").forEach((input) => input.addEventListener("change", () => { const label = $("#selectedSizeLabel"); if (label) label.textContent = input.value; }));
 
+  const countdown = $("[data-verify-countdown]");
+  const resendButton = $("[data-countdown-resend]");
+  const verificationCode = $("[data-verification-code]");
+  if (countdown) {
+    const until = Number(countdown.dataset.countdownUntil || 0);
+    const updateCountdown = () => {
+      const remaining = Math.max(0, until - Date.now());
+      if (remaining === 0) {
+        countdown.textContent = "Kodun süresi doldu. Yeni kod isteyebilirsin.";
+        countdown.classList.add("is-expired");
+        if (resendButton) { resendButton.disabled = false; resendButton.removeAttribute("aria-disabled"); }
+        return true;
+      }
+      const totalSeconds = Math.ceil(remaining / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = String(totalSeconds % 60).padStart(2, "0");
+      countdown.textContent = `Kodun geçerlilik süresi: ${minutes}:${seconds}`;
+      if (resendButton) { resendButton.disabled = true; resendButton.setAttribute("aria-disabled", "true"); }
+      return false;
+    };
+    if (!updateCountdown()) {
+      const timer = window.setInterval(() => { if (updateCountdown()) window.clearInterval(timer); }, 1000);
+    }
+    if (verificationCode?.value.length === 6) verificationCode.focus();
+  }
+
   const lightbox = $("#galleryLightbox");
   let lightboxIndex = 0;
   const lightboxImage = $("#galleryLightbox img");

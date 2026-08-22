@@ -11,6 +11,7 @@ if (!is_file($configFile)) {
 }
 
 $config = require $configFile;
+require_once __DIR__ . '/schema.php';
 
 try {
     $pdo = new PDO(
@@ -27,6 +28,8 @@ try {
     http_response_code(500);
     exit('Veri tabanı bağlantısı kurulamadı. Yerel bağlantı ayarlarınızı ve MySQL hizmetini kontrol edin.');
 }
+
+pelish_run_migrations($pdo);
 
 if (empty($_SESSION['pelish_admin_csrf'])) {
     $_SESSION['pelish_admin_csrf'] = bin2hex(random_bytes(32));

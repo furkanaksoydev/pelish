@@ -17,6 +17,32 @@ function pelish_column_exists(PDO $pdo, string $table, string $column): bool
     return (int) $statement->fetchColumn() > 0;
 }
 
+function pelish_table_exists(PDO $pdo, string $table): bool
+{
+    $statement = $pdo->prepare(
+        'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?'
+    );
+    $statement->execute([$table]);
+    return (int) $statement->fetchColumn() > 0;
+}
+
+function pelish_run_migrations(PDO $pdo): void
+{
+    // Boş kurulumlarda ana tablolar setup.php tarafından oluşturulur. Canlıda
+    // ise bu küçük kayıt tablosu yeni özellikleri bir kez, veri kaybetmeden ekler.
+    if (!pelish_table_exists($pdo, 'pelish_customers')) {
+        return;
+    }
+    $pdo->exec('CREATE TABLE IF NOT EXISTS pelish_schema_migrations (version VARCHAR(80) NOT NULL PRIMARY KEY, applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+    $version = 'customer-email-security-v1';
+    $exists = $pdo->prepare('SELECT COUNT(*) FROM pelish_schema_migrations WHERE version = ?');
+    $exists->execute([$version]);
+    if ((int) $exists->fetchColumn() === 0) {
+        pelish_install_customer_features($pdo);
+        $pdo->prepare('INSERT INTO pelish_schema_migrations (version) VALUES (?)')->execute([$version]);
+    }
+}
+
 function pelish_add_column(PDO $pdo, string $table, string $column, string $definition): void
 {
     if (!pelish_column_exists($pdo, $table, $column)) {
@@ -48,6 +74,23 @@ CREATE TABLE IF NOT EXISTS pelish_email_verifications (
     UNIQUE KEY unique_verification_email (email),
     UNIQUE KEY unique_verification_username (username),
     INDEX idx_verification_expires (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS pelish_customer_email_changes (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT UNSIGNED NOT NULL,
+    new_email VARCHAR(190) NOT NULL,
+    new_phone VARCHAR(40) NOT NULL,
+    new_password_hash VARCHAR(255) NULL,
+    code_hash VARCHAR(255) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    attempts TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_customer_email_change (customer_id),
+    UNIQUE KEY unique_pending_customer_email (new_email),
+    INDEX idx_customer_email_change_expiry (expires_at),
+    CONSTRAINT fk_pelish_customer_email_change_customer FOREIGN KEY (customer_id) REFERENCES pelish_customers(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS pelish_customer_carts (

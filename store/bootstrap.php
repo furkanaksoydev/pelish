@@ -243,7 +243,7 @@ function store_smtp_command($connection, string $command, array $expected): bool
     return in_array(store_smtp_response($connection), $expected, true);
 }
 
-function store_send_verification_email(array $mail, string $to, string $code): bool
+function store_send_verification_email(array $mail, string $to, string $code, string $verificationPath = 'dogrula.php', bool $emailChange = false): bool
 {
     $from = trim((string) ($mail['from_email'] ?? ''));
     $host = trim((string) ($mail['smtp_host'] ?? ''));
@@ -271,9 +271,12 @@ function store_send_verification_email(array $mail, string $to, string $code): b
     // olarak reddedebildiği için güvenli ve yerel bir HELO kimliği kullanılır.
     $hostname = 'localhost';
     $name = trim(str_replace(["\r", "\n"], '', (string) ($mail['from_name'] ?? 'pelish'))) ?: 'pelish';
-    $subject = 'pelish kayıt doğrulama kodun';
-    $plainBody = "Merhaba,\n\npelish hesabını oluşturmak için doğrulama kodun: {$code}\n\nBu kod 3 dakika geçerlidir. Eğer bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.";
+    $subject = $emailChange ? 'pelish e-posta değişikliği doğrulama kodun' : 'pelish kayıt doğrulama kodun';
+    $actionCopy = $emailChange ? 'e-posta adresini güncellemek' : 'pelish hesabını oluşturmak';
+    $verificationUrl = 'https://www.pelish.co/' . ltrim($verificationPath, '/') . '?code=' . rawurlencode($code);
+    $plainBody = "Merhaba,\n\n{$actionCopy} için doğrulama kodun: {$code}\n\nKodunla doğrudan doğrulama ekranını açmak için: {$verificationUrl}\n\nBu kod 3 dakika geçerlidir. Eğer bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.";
     $safeCode = htmlspecialchars($code, ENT_QUOTES, 'UTF-8');
+    $safeVerificationUrl = htmlspecialchars($verificationUrl, ENT_QUOTES, 'UTF-8');
     $htmlBody = <<<HTML
 <!doctype html>
 <html lang="tr">
@@ -287,13 +290,13 @@ function store_send_verification_email(array $mail, string $to, string $code): b
           <tr><td align="center" style="padding:42px 42px 18px;">
             <p style="margin:0 0 14px;color:#897c70;font-size:11px;line-height:16px;letter-spacing:2px;font-weight:700;">HOŞ GELDİN</p>
             <h1 style="margin:0;color:#181716;font-family:Georgia,'Times New Roman',serif;font-size:34px;line-height:42px;font-weight:500;">E-postanı<br>doğrulayalım.</h1>
-            <p style="margin:22px 0 0;color:#615a54;font-size:15px;line-height:24px;">pelish hesabını oluşturmak için<br>aşağıdaki doğrulama kodunu kullan.</p>
+            <p style="margin:22px 0 0;color:#615a54;font-size:15px;line-height:24px;">{$actionCopy} için<br>aşağıdaki doğrulama kodunu kullan.</p>
           </td></tr>
           <tr><td align="center" style="padding:18px 42px 24px;">
             <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="background:#f6f0ea;border:1px solid #e6dbd0;">
               <tr><td align="center" style="padding:14px 28px 18px;">
                 <p style="margin:0 0 8px;color:#897c70;font-size:10px;line-height:14px;letter-spacing:2px;font-weight:700;">DOĞRULAMA KODUN</p>
-                <p style="margin:0;color:#1b1917;font-family:'Courier New',Courier,monospace;font-size:34px;line-height:40px;letter-spacing:8px;font-weight:700;">{$safeCode}</p>
+                <a href="{$safeVerificationUrl}" target="_blank" style="display:block;color:#1b1917;text-decoration:none;"><p style="margin:0;color:#1b1917;font-family:'Courier New',Courier,monospace;font-size:34px;line-height:40px;letter-spacing:8px;font-weight:700;">{$safeCode}</p><p style="margin:10px 0 0;color:#897c70;font-size:10px;line-height:14px;letter-spacing:1.6px;font-weight:700;">DOĞRULAMAK İÇİN DOKUN</p></a>
               </td></tr>
             </table>
           </td></tr>
