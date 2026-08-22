@@ -103,7 +103,7 @@ function panel_footer(): void
     </main>
     <footer class="panel-footer"><div class="shell">Version: 1.0.0 <span>·</span> pelish Yönetim Paneli</div></footer>
     <div class="toast" id="toast" role="status"></div>
-    <script src="assets/admin.js"></script>
+    <script src="assets/admin-interactions.js"></script>
   </body>
 </html>
     <?php

@@ -1,6 +1,6 @@
 # pelish.co canlıya alma notu
 
-Yüklemeye hazır dosyalar proje dışındaki `C:\xampp\htdocs\pelish-canli-yukleme-final` klasöründe, aynı içeriğin ZIP sürümü ise `C:\xampp\htdocs\pelish-canli-yukleme-final.zip` dosyasındadır. Hostingin belge köküne yalnızca bu paketin **içeriğini** yükleyin.
+Yüklemeye hazır dosyalar proje dışındaki `C:\xampp\htdocs\pelish-canli-yukleme-final-v2` klasöründe, aynı içeriğin ZIP sürümü ise `C:\xampp\htdocs\pelish-canli-yukleme-final-v2.zip` dosyasındadır. Hostingin belge köküne yalnızca bu paketin **içeriğini** yükleyin.
 
 1. `admin/config.example.php` dosyasını sunucuda `admin/config.local.php` adıyla kopyalayın; veritabanı, R2 ve e-posta gönderici ayarlarını sadece bu sunucu dosyasına yazın.
 2. Bir kez `https://www.pelish.co/admin/setup.php` yolunu açın. Kurulum yalnızca şemayı ve başlangıç yönetici hesabını oluşturur; örnek ürün, müşteri, kupon veya katalog verisi eklemez.
