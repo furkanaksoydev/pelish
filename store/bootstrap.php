@@ -79,6 +79,18 @@ function store_safe_return(?string $value, string $fallback = 'index.php'): stri
     return $fallback;
 }
 
+function store_current_return(string $fallback = 'index.php'): string
+{
+    $request = (string) ($_SERVER['REQUEST_URI'] ?? '');
+    $path = (string) parse_url($request, PHP_URL_PATH);
+    $page = basename($path);
+    if (!preg_match('/^[a-z0-9-]+\.php$/i', $page)) {
+        return $fallback;
+    }
+    $query = (string) parse_url($request, PHP_URL_QUERY);
+    return store_safe_return($page . ($query !== '' ? '?' . $query : ''), $fallback);
+}
+
 function store_redirect(string $url): never
 {
     header('Location: ' . $url);
@@ -213,13 +225,14 @@ function store_toggle_favorite(PDO $pdo, int $customerId, int $productId): bool
     return true;
 }
 
-function store_finish_pending_action(PDO $pdo, int $customerId): void
+function store_finish_pending_action(PDO $pdo, int $customerId): string
 {
     $pending = $_SESSION['pelish_pending_action'] ?? null;
     unset($_SESSION['pelish_pending_action']);
     if (!is_array($pending) || empty($pending['type'])) {
-        return;
+        return 'index.php';
     }
+    $returnTo = store_safe_return((string) ($pending['return_to'] ?? ''), 'index.php');
     try {
         if ($pending['type'] === 'favorite') {
             $added = store_toggle_favorite($pdo, $customerId, (int) ($pending['product_id'] ?? 0));
@@ -231,6 +244,7 @@ function store_finish_pending_action(PDO $pdo, int $customerId): void
     } catch (RuntimeException $exception) {
         store_flash('danger', $exception->getMessage());
     }
+    return $returnTo;
 }
 
 function store_counts(PDO $pdo, ?array $customer = null): array

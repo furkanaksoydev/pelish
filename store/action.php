@@ -14,11 +14,15 @@ if (in_array($action, ['cart-quantity', 'cart-remove'], true)) {
     $returnTo = 'sepetim.php';
 }
 $productId = (int) ($_POST['product_id'] ?? 0);
+if ($action === 'cart' && $productId > 0) {
+    $returnTo = 'urun.php?id=' . $productId;
+}
 $pending = [
     'type' => $action,
     'product_id' => $productId,
     'image_id' => (int) ($_POST['image_id'] ?? 0),
     'size' => strtoupper(trim((string) ($_POST['size'] ?? ''))),
+    'return_to' => $returnTo,
 ];
 
 if (in_array($action, ['favorite', 'cart'], true) && !store_customer($pdo)) {

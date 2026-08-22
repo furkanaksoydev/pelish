@@ -34,9 +34,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->commit();
             store_login_customer(['id' => $customerId]);
             unset($_SESSION['pelish_verify_email']);
-            store_finish_pending_action($pdo, $customerId);
+            $returnTo = store_finish_pending_action($pdo, $customerId);
             if (!isset($_SESSION['pelish_store_flash'])) { store_flash('success', 'E-posta adresin doğrulandı. Pelish’e hoş geldin.'); }
-            store_redirect('index.php');
+            store_redirect($returnTo);
         } catch (Throwable $exception) {
             if ($pdo->inTransaction()) { $pdo->rollBack(); }
             store_flash('danger', 'Hesap oluşturulamadı. E-posta adresi artık kullanılıyor olabilir.');

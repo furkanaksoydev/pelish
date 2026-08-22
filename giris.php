@@ -24,9 +24,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             store_login_customer($customer);
             $pdo->prepare('UPDATE pelish_customers SET last_login_at = NOW() WHERE id = ?')->execute([$customer['id']]);
-            store_finish_pending_action($pdo, (int) $customer['id']);
+            $returnTo = store_finish_pending_action($pdo, (int) $customer['id']);
             if (!isset($_SESSION['pelish_store_flash'])) { store_flash('success', 'Tekrar hoş geldin, ' . $customer['first_name'] . '.'); }
-            store_redirect('index.php');
+            store_redirect($returnTo);
         }
         $activeTab = 'giris';
     }
