@@ -13,10 +13,15 @@ return [
         'public_base_url' => 'https://cdn.pelish.co',
         'key_prefix' => 'products',
     ],
-    // Kayıt doğrulama kodunu gönderen SMTP / PHP mail ayarları.
-    // Yerel XAMPP'te mail() yapılandırılmamışsa bir SMTP sağlayıcısı kullanın.
+    // Kayıt doğrulama kodunu gönderen, kimliği doğrulanmış SMTP ayarları.
     'mail' => [
         'from_email' => '',
         'from_name' => 'pelish',
+        'smtp_host' => '',
+        'smtp_port' => 587,
+        'smtp_encryption' => 'tls',
+        'smtp_username' => '',
+        'smtp_password' => '',
+        'smtp_timeout' => 15,
     ],
 ];

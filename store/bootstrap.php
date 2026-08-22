@@ -219,19 +219,94 @@ function store_counts(PDO $pdo, ?array $customer = null): array
     return ['cart' => (int) $cart->fetchColumn(), 'favorites' => (int) $favorite->fetchColumn()];
 }
 
+function store_smtp_response($connection): ?int
+{
+    $code = null;
+    while (($line = fgets($connection, 515)) !== false) {
+        if (preg_match('/^(\d{3})([ -])/', $line, $match)) {
+            $code = (int) $match[1];
+            if ($match[2] === ' ') {
+                return $code;
+            }
+        } else {
+            return null;
+        }
+    }
+    return null;
+}
+
+function store_smtp_command($connection, string $command, array $expected): bool
+{
+    if (fwrite($connection, $command . "\r\n") === false) {
+        return false;
+    }
+    return in_array(store_smtp_response($connection), $expected, true);
+}
+
 function store_send_verification_email(array $mail, string $to, string $code): bool
 {
     $from = trim((string) ($mail['from_email'] ?? ''));
-    if ($from === '' || !filter_var($from, FILTER_VALIDATE_EMAIL)) {
+    $host = trim((string) ($mail['smtp_host'] ?? ''));
+    $username = trim((string) ($mail['smtp_username'] ?? $from));
+    $password = (string) ($mail['smtp_password'] ?? '');
+    $port = max(1, min(65535, (int) ($mail['smtp_port'] ?? 587)));
+    $encryption = strtolower(trim((string) ($mail['smtp_encryption'] ?? 'tls')));
+    $timeout = max(5, min(30, (int) ($mail['smtp_timeout'] ?? 15)));
+
+    if (!filter_var($from, FILTER_VALIDATE_EMAIL) || !filter_var($to, FILTER_VALIDATE_EMAIL) || $host === '' || $username === '' || $password === '') {
         return false;
     }
-    $name = trim((string) ($mail['from_name'] ?? 'pelish')) ?: 'pelish';
+    if (!in_array($encryption, ['tls', 'none'], true) || !extension_loaded('openssl')) {
+        return false;
+    }
+
+    $context = stream_context_create(['ssl' => ['verify_peer' => true, 'verify_peer_name' => true, 'peer_name' => $host]]);
+    $connection = @stream_socket_client('tcp://' . $host . ':' . $port, $errorNumber, $errorMessage, $timeout, STREAM_CLIENT_CONNECT, $context);
+    if (!is_resource($connection)) {
+        return false;
+    }
+
+    stream_set_timeout($connection, $timeout);
+    $hostname = preg_replace('/[^A-Za-z0-9.-]/', '', (string) (gethostname() ?: 'pelish.co')) ?: 'pelish.co';
+    $name = trim(str_replace(["\r", "\n"], '', (string) ($mail['from_name'] ?? 'pelish'))) ?: 'pelish';
     $subject = 'pelish kayıt doğrulama kodun';
     $body = "Merhaba,\n\npelish hesabını oluşturmak için doğrulama kodun: {$code}\n\nBu kod 3 dakika geçerlidir. Eğer bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.";
-    $headers = [
-        'MIME-Version: 1.0',
-        'Content-type: text/plain; charset=UTF-8',
-        'From: ' . $name . ' <' . $from . '>',
-    ];
-    return @mail($to, $subject, $body, implode("\r\n", $headers));
+
+    $sent = store_smtp_response($connection) === 220
+        && store_smtp_command($connection, 'EHLO ' . $hostname, [250]);
+
+    if ($sent && $encryption === 'tls') {
+        $sent = store_smtp_command($connection, 'STARTTLS', [220])
+            && stream_socket_enable_crypto($connection, true, STREAM_CRYPTO_METHOD_TLS_CLIENT) === true
+            && store_smtp_command($connection, 'EHLO ' . $hostname, [250]);
+    }
+
+    if ($sent) {
+        $sent = store_smtp_command($connection, 'AUTH LOGIN', [334])
+            && store_smtp_command($connection, base64_encode($username), [334])
+            && store_smtp_command($connection, base64_encode($password), [235])
+            && store_smtp_command($connection, 'MAIL FROM:<' . $from . '>', [250])
+            && store_smtp_command($connection, 'RCPT TO:<' . $to . '>', [250, 251])
+            && store_smtp_command($connection, 'DATA', [354]);
+    }
+
+    if ($sent) {
+        $normalizedBody = str_replace(["\r\n", "\r"], "\n", $body);
+        $normalizedBody = preg_replace('/(?m)^\./', '..', $normalizedBody) ?? $normalizedBody;
+        $headers = [
+            'Date: ' . date(DATE_RFC2822),
+            'From: ' . $name . ' <' . $from . '>',
+            'To: <' . $to . '>',
+            'Subject: =?UTF-8?B?' . base64_encode($subject) . '?=',
+            'MIME-Version: 1.0',
+            'Content-Type: text/plain; charset=UTF-8',
+            'Content-Transfer-Encoding: 8bit',
+        ];
+        $sent = fwrite($connection, implode("\r\n", $headers) . "\r\n\r\n" . str_replace("\n", "\r\n", $normalizedBody) . "\r\n.\r\n") !== false
+            && store_smtp_response($connection) === 250;
+    }
+
+    @store_smtp_command($connection, 'QUIT', [221]);
+    fclose($connection);
+    return $sent;
 }
