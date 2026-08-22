@@ -272,7 +272,43 @@ function store_send_verification_email(array $mail, string $to, string $code): b
     $hostname = 'localhost';
     $name = trim(str_replace(["\r", "\n"], '', (string) ($mail['from_name'] ?? 'pelish'))) ?: 'pelish';
     $subject = 'pelish kayıt doğrulama kodun';
-    $body = "Merhaba,\n\npelish hesabını oluşturmak için doğrulama kodun: {$code}\n\nBu kod 3 dakika geçerlidir. Eğer bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.";
+    $plainBody = "Merhaba,\n\npelish hesabını oluşturmak için doğrulama kodun: {$code}\n\nBu kod 3 dakika geçerlidir. Eğer bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.";
+    $safeCode = htmlspecialchars($code, ENT_QUOTES, 'UTF-8');
+    $htmlBody = <<<HTML
+<!doctype html>
+<html lang="tr">
+  <body style="margin:0;padding:0;background:#f5f1ec;color:#181716;font-family:Arial,Helvetica,sans-serif;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#f5f1ec;">
+      <tr><td align="center" style="padding:38px 16px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px;background:#ffffff;">
+          <tr><td align="center" style="padding:42px 42px 26px;border-bottom:1px solid #e8e1da;">
+            <img src="https://cdn.pelish.co/logo.png" width="148" alt="pelish" style="display:block;width:148px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;">
+          </td></tr>
+          <tr><td align="center" style="padding:42px 42px 18px;">
+            <p style="margin:0 0 14px;color:#897c70;font-size:11px;line-height:16px;letter-spacing:2px;font-weight:700;">HOŞ GELDİN</p>
+            <h1 style="margin:0;color:#181716;font-family:Georgia,'Times New Roman',serif;font-size:34px;line-height:42px;font-weight:500;">E-postanı<br>doğrulayalım.</h1>
+            <p style="margin:22px 0 0;color:#615a54;font-size:15px;line-height:24px;">pelish hesabını oluşturmak için<br>aşağıdaki doğrulama kodunu kullan.</p>
+          </td></tr>
+          <tr><td align="center" style="padding:18px 42px 24px;">
+            <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="background:#f6f0ea;border:1px solid #e6dbd0;">
+              <tr><td align="center" style="padding:14px 28px 18px;">
+                <p style="margin:0 0 8px;color:#897c70;font-size:10px;line-height:14px;letter-spacing:2px;font-weight:700;">DOĞRULAMA KODUN</p>
+                <p style="margin:0;color:#1b1917;font-family:'Courier New',Courier,monospace;font-size:34px;line-height:40px;letter-spacing:8px;font-weight:700;">{$safeCode}</p>
+              </td></tr>
+            </table>
+          </td></tr>
+          <tr><td align="center" style="padding:0 42px 42px;">
+            <p style="margin:0;color:#615a54;font-size:13px;line-height:21px;">Bu kod <strong style="color:#1b1917;">3 dakika</strong> boyunca geçerli.<br>Eğer bu isteği sen yapmadıysan bu e-postayı yok sayabilirsin.</p>
+          </td></tr>
+          <tr><td align="center" style="padding:19px 24px;background:#181716;">
+            <p style="margin:0;color:#f4eee8;font-size:10px;line-height:15px;letter-spacing:1.5px;">PELISH · TEKİRDAĞ / SÜLEYMANPAŞA</p>
+          </td></tr>
+        </table>
+      </td></tr>
+    </table>
+  </body>
+</html>
+HTML;
 
     $sent = store_smtp_response($connection) === 220
         && store_smtp_command($connection, 'EHLO ' . $hostname, [250]);
@@ -293,7 +329,17 @@ function store_send_verification_email(array $mail, string $to, string $code): b
     }
 
     if ($sent) {
-        $normalizedBody = str_replace(["\r\n", "\r"], "\n", $body);
+        $boundary = 'pelish-' . bin2hex(random_bytes(12));
+        $messageBody = '--' . $boundary . "\r\n"
+            . "Content-Type: text/plain; charset=UTF-8\r\n"
+            . "Content-Transfer-Encoding: 8bit\r\n\r\n"
+            . $plainBody . "\r\n\r\n"
+            . '--' . $boundary . "\r\n"
+            . "Content-Type: text/html; charset=UTF-8\r\n"
+            . "Content-Transfer-Encoding: 8bit\r\n\r\n"
+            . $htmlBody . "\r\n\r\n"
+            . '--' . $boundary . "--\r\n";
+        $normalizedBody = str_replace(["\r\n", "\r"], "\n", $messageBody);
         $normalizedBody = preg_replace('/(?m)^\./', '..', $normalizedBody) ?? $normalizedBody;
         $headers = [
             'Date: ' . date(DATE_RFC2822),
@@ -301,8 +347,7 @@ function store_send_verification_email(array $mail, string $to, string $code): b
             'To: <' . $to . '>',
             'Subject: =?UTF-8?B?' . base64_encode($subject) . '?=',
             'MIME-Version: 1.0',
-            'Content-Type: text/plain; charset=UTF-8',
-            'Content-Transfer-Encoding: 8bit',
+            'Content-Type: multipart/alternative; boundary="' . $boundary . '"',
         ];
         $sent = fwrite($connection, implode("\r\n", $headers) . "\r\n\r\n" . str_replace("\n", "\r\n", $normalizedBody) . "\r\n.\r\n") !== false
             && store_smtp_response($connection) === 250;
