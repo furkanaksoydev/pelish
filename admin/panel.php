@@ -67,7 +67,7 @@ function panel_header(string $page, string $subTitle = '', array $subLinks = [])
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono&family=DM+Sans:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-    <link rel="stylesheet" href="assets/admin.css">
+    <link rel="stylesheet" href="assets/admin.css?v=20260822">
   </head>
   <body>
     <div class="page-loader" id="pageLoader"><span></span><small>Yükleniyor…</small></div>
