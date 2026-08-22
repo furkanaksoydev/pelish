@@ -1,12 +1,16 @@
 DirectoryIndex index.php index.html
 
+<FilesMatch "^(config\.local\.php|config\.php)$">
+  Require all denied
+</FilesMatch>
+
 <IfModule mod_rewrite.c>
   RewriteEngine On
-  RewriteRule ^index\.html$ /pelish/index.php [R=302,L]
-  RewriteRule ^indirimler\.html$ /pelish/indirimler.php [R=302,L]
-  RewriteRule ^urun\.html$ /pelish/urun.php [R=302,L]
-  RewriteRule ^sepetim\.html$ /pelish/sepetim.php [R=302,L]
-  RewriteRule ^favorilerim\.html$ /pelish/favorilerim.php [R=302,L]
-  RewriteRule ^tekirdag-suleymanpasa-kadin-giyim\.html$ /pelish/yerel-secki.php?konum=suleymanpasa [R=302,L]
-  RewriteRule ^tekirdag-kumbag-kadin-giyim\.html$ /pelish/yerel-secki.php?konum=kumbag [R=302,L]
+  RewriteRule ^index\.html$ /index.php [R=301,L]
+  RewriteRule ^indirimler\.html$ /indirimler.php [R=301,L]
+  RewriteRule ^urun\.html$ /urun.php [R=301,L]
+  RewriteRule ^sepetim\.html$ /sepetim.php [R=301,L]
+  RewriteRule ^favorilerim\.html$ /favorilerim.php [R=301,L]
+  RewriteRule ^tekirdag-suleymanpasa-kadin-giyim\.html$ /yerel-secki.php?konum=suleymanpasa [R=301,L]
+  RewriteRule ^tekirdag-kumbag-kadin-giyim\.html$ /yerel-secki.php?konum=kumbag [R=301,L]
 </IfModule>

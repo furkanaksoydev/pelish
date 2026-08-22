@@ -101,6 +101,6 @@ SQL);
     $adminCount = (int) $pdo->query('SELECT COUNT(*) FROM pelish_admin_accounts')->fetchColumn();
     if ($adminCount === 0) {
         $seedAdmin = $pdo->prepare('INSERT INTO pelish_admin_accounts (username, password_hash) VALUES (?, ?)');
-        $seedAdmin->execute(['pelin', password_hash('pelin.02', PASSWORD_DEFAULT)]);
+        $seedAdmin->execute(['pelish', '$2y$10$4OHUa1yhVY3nlwHRIa5BP.NJMmwkH3AXjf.x8n/KDOefPFiJCax6W']);
     }
 }

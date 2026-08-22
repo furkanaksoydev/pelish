@@ -16,7 +16,7 @@ function r2_settings(array $config): array
         'secret_access_key' => trim((string) ($r2['secret_access_key'] ?? '')),
         'bucket' => trim((string) ($r2['bucket'] ?? '')),
         'public_base_url' => rtrim(trim((string) ($r2['public_base_url'] ?? '')), '/'),
-        'key_prefix' => trim(trim((string) ($r2['key_prefix'] ?? 'pelish/products')), '/'),
+        'key_prefix' => trim(trim((string) ($r2['key_prefix'] ?? 'products')), '/'),
     ];
 }
 
@@ -56,8 +56,10 @@ function r2_request(array $settings, string $method, string $key, ?string $body 
         throw new RuntimeException('R2 ayarları eksik. config.local.php içindeki r2 alanlarını tamamlayın.');
     }
 
-    $host = $settings['bucket'] . '.' . $settings['account_id'] . '.r2.cloudflarestorage.com';
-    $canonicalUri = '/' . r2_encode_key($key);
+    // Cloudflare'ın bucket endpoint'i: /<bucket>/<object-key>.
+    // Bu, R2 kontrol panelinde verilen S3 API URL'siyle birebir aynıdır.
+    $host = $settings['account_id'] . '.r2.cloudflarestorage.com';
+    $canonicalUri = '/' . rawurlencode($settings['bucket']) . '/' . r2_encode_key($key);
     $payload = $body ?? '';
     $payloadHash = hash('sha256', $payload);
     $amzDate = gmdate('Ymd\THis\Z');
