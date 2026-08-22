@@ -19,7 +19,7 @@ function store_render_head(string $title, bool $home = false): void
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <link rel="stylesheet" href="assets/css/ssssstyle.css">
     <link rel="stylesheet" href="assets/css/header-identical.css">
-    <link rel="stylesheet" href="assets/css/storefront-db.css">
+    <link rel="stylesheet" href="assets/css/storefront-core.css">
   </head>
   <body class="<?= $home ? 'store-home' : 'store-page' ?>">
     <?php
