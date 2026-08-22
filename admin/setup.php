@@ -5,6 +5,21 @@ declare(strict_types=1);
 require __DIR__ . '/bootstrap.php';
 require __DIR__ . '/schema.php';
 
+/*
+ * Kurulum yalnızca boş sistemlerde çalışır. Başlangıç yönetici hesabı
+ * oluştuğunda bu uç nokta kalıcı olarak kilitlenir; böylece canlıdaki
+ * tabloların anonim bir istekle tekrar kurulması engellenir.
+ */
+$adminTable = $pdo->prepare("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'pelish_admin_accounts'");
+$adminTable->execute();
+if ((int) $adminTable->fetchColumn() > 0) {
+    $adminCount = (int) $pdo->query('SELECT COUNT(*) FROM pelish_admin_accounts')->fetchColumn();
+    if ($adminCount > 0) {
+        http_response_code(403);
+        exit('Kurulum daha önce tamamlandı. Yönetim paneline dönün.');
+    }
+}
+
 $pdo->exec(<<<'SQL'
 CREATE TABLE IF NOT EXISTS pelish_products (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
