@@ -17,6 +17,9 @@ $productId = (int) ($_POST['product_id'] ?? 0);
 if ($action === 'cart' && $productId > 0) {
     $returnTo = 'urun.php?id=' . $productId;
 }
+if ($action === 'favorite' && $productId > 0 && str_starts_with($returnTo, 'urun.php')) {
+    $returnTo = 'urun.php?id=' . $productId;
+}
 $pending = [
     'type' => $action,
     'product_id' => $productId,

@@ -28,7 +28,7 @@
   searchInput?.addEventListener("input", () => {
     const query = searchInput.value.trim();
     clearTimeout(searchTimer);
-    if (query.length < 2) { if (searchResults) searchResults.innerHTML = ""; return; }
+    if (query.length < 1) { if (searchResults) searchResults.innerHTML = ""; return; }
     searchTimer = setTimeout(async () => {
       try {
         const response = await fetch(`store/search.php?q=${encodeURIComponent(query)}`, { headers: { Accept: "application/json" } });
@@ -36,7 +36,7 @@
         if (!searchResults) return;
         searchResults.innerHTML = products.map((item) => `<a class="search-result" href="urun.php?id=${item.id}"><img src="${item.image_url || "https://images.unsplash.com/photo-1485968579580-b6d095142e6e?auto=format&fit=crop&w=200&q=75"}" alt=""><span><small>${item.category}</small><strong>${item.name}</strong></span></a>`).join("") || "<p class=\"search-empty\">Eşleşen ürün bulunamadı.</p>";
       } catch { if (searchResults) searchResults.innerHTML = ""; }
-    }, 160);
+    }, 120);
   });
   window.addEventListener("scroll", () => header?.classList.toggle("scrolled", window.scrollY > 80), { passive: true });
 
