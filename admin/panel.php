@@ -69,7 +69,7 @@ function panel_header(string $page, string $subTitle = '', array $subLinks = [])
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono&family=DM+Sans:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-    <link rel="stylesheet" href="assets/admin-interface.css?v=20260822">
+    <link rel="stylesheet" href="assets/pelish-admin-console.css?v=20260823">
   </head>
   <body>
     <div class="page-loader" id="pageLoader"><span></span><small>Yükleniyor…</small></div>
@@ -105,7 +105,7 @@ function panel_footer(): void
     </main>
     <footer class="panel-footer"><div class="shell">Version: 1.0.0 <span>·</span> pelish Yönetim Paneli</div></footer>
     <div class="toast" id="toast" role="status"></div>
-    <script src="assets/admin-interactions.js"></script>
+    <script src="assets/pelish-admin-console.js"></script>
   </body>
 </html>
     <?php

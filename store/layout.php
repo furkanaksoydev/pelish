@@ -19,9 +19,9 @@ function store_render_head(string $title, bool $home = false): void
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,500;0,600;1,500&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-    <link rel="stylesheet" href="assets/css/ssssstyle.css">
-    <link rel="stylesheet" href="assets/css/header-identical.css">
-    <link rel="stylesheet" href="assets/css/storefront-ui.css">
+    <link rel="stylesheet" href="assets/css/pelish-store-shell.css">
+    <link rel="stylesheet" href="assets/css/pelish-header-system.css">
+    <link rel="stylesheet" href="assets/css/pelish-storefront-experience.css">
   </head>
   <body class="<?= $home ? 'store-home' : 'store-page' ?>">
     <?php
@@ -60,7 +60,7 @@ function store_render_footer(): void
 {
     ?>
     <footer class="store-footer" id="footer"><div><a class="footer-logo" href="index.php"><img src="https://cdn.pelish.co/logo.png" alt="pelish"></a><p>Tekirdağ / Süleymanpaşa</p></div><div><small>PELISH’E YAKIN OL</small><a href="https://instagram.com/pelish.co" target="_blank" rel="noopener"><i class="fa-brands fa-instagram"></i> @pelish.co</a><a href="https://instagram.com/pelishaccessory" target="_blank" rel="noopener"><i class="fa-brands fa-instagram"></i> @pelishaccessory</a><a href="#"><i class="fa-brands fa-tiktok"></i> @pelish.co</a></div><div><small>HIZLI ERİŞİM</small><a href="indirimler.php">İndirim</a><a href="favorilerim.php">Favorilerim</a><a href="sepetim.php">Sepetim</a></div></footer>
-    <script src="assets/js/storefront-favorite-flow.js"></script>
+    <script src="assets/js/pelish-storefront-actions.js"></script>
   </body>
 </html>
     <?php
