@@ -131,5 +131,79 @@
   }));
   $("[data-flash] button")?.addEventListener("click", (event) => event.currentTarget.closest("[data-flash]")?.remove());
   setTimeout(() => $("[data-flash]")?.remove(), 5200);
+
+  const showStoreFlash = (message, type = "success") => {
+    if (!message) return;
+    $("[data-flash]")?.remove();
+    const flash = document.createElement("div");
+    flash.className = `store-flash flash-${type}`;
+    flash.dataset.flash = "";
+    flash.innerHTML = `<i class="fa-solid fa-${type === "danger" ? "circle-exclamation" : "circle-check"}"></i><span></span><button type="button" aria-label="Kapat">×</button>`;
+    $("span", flash).textContent = message;
+    $("button", flash)?.addEventListener("click", () => flash.remove());
+    document.body.append(flash);
+    window.setTimeout(() => flash.remove(), 3600);
+  };
+
+  const favoriteForms = () => $$('form[action$="store/action.php"]').filter((form) => {
+    const action = form.querySelector('input[name="action"]')?.value;
+    return action === "favorite" || action === "favorite-remove";
+  });
+  const syncFavoriteState = (productId, isFavorite, count) => {
+    favoriteForms().filter((form) => form.querySelector('input[name="product_id"]')?.value === String(productId)).forEach((form) => {
+      const action = form.querySelector('input[name="action"]');
+      const button = $("button", form);
+      if (!action || !button) return;
+      action.value = "favorite";
+      button.classList.toggle("liked", isFavorite);
+      button.setAttribute("aria-label", isFavorite ? "Favoriden çıkar" : "Favoriye ekle");
+      if (button.classList.contains("favorite-outline")) {
+        button.innerHTML = `<i class="${isFavorite ? "fa-solid" : "fa-regular"} fa-heart"></i> ${isFavorite ? "Favoriden çıkar" : "Favorile"}`;
+      } else {
+        const icon = $("span", button);
+        if (icon) icon.textContent = isFavorite ? "♥" : "♡";
+      }
+      if (!isFavorite && form.closest(".favorite-product-grid")) {
+        form.closest(".product-card")?.remove();
+      }
+    });
+    const favoriteLink = $('.header-action[aria-label="Favorilerim"]');
+    if (favoriteLink) {
+      let badge = $("small", favoriteLink);
+      if (count > 0 && !badge) { badge = document.createElement("small"); favoriteLink.append(badge); }
+      if (badge) { badge.textContent = String(count); if (count < 1) badge.remove(); }
+    }
+    const grid = $(".favorite-product-grid");
+    if (grid && !$(".product-card", grid)) {
+      grid.innerHTML = '<div class="favorite-empty-inline"><strong>Favori listen güncellendi.</strong><span>Beğendiğin yeni parçalar burada yer alacak.</span><a href="indirimler.php">İndirimleri keşfet →</a></div>';
+    }
+  };
+  document.addEventListener("submit", async (event) => {
+    const form = event.target instanceof HTMLFormElement ? event.target : null;
+    if (!form || !favoriteForms().includes(form)) return;
+    event.preventDefault();
+    const button = $("button", form);
+    if (button?.disabled) return;
+    if (button) button.disabled = true;
+    try {
+      const response = await fetch(form.action, {
+        method: "POST",
+        body: new FormData(form),
+        headers: { "X-Requested-With": "XMLHttpRequest", Accept: "application/json" },
+        credentials: "same-origin",
+      });
+      const result = await response.json();
+      if (result.requires_auth && result.redirect) { window.location.assign(result.redirect); return; }
+      if (!response.ok || !result.ok) throw new Error(result.message || "Favori işlemi tamamlanamadı.");
+      const productId = form.querySelector('input[name="product_id"]')?.value;
+      if (productId) syncFavoriteState(productId, Boolean(result.is_favorite), Number(result.favorite_count || 0));
+      showStoreFlash(result.message);
+    } catch (error) {
+      showStoreFlash(error instanceof Error ? error.message : "Favori işlemi tamamlanamadı.", "danger");
+    } finally {
+      if (button?.isConnected) button.disabled = false;
+    }
+  });
+
   document.addEventListener("keydown", (event) => { if (event.key === "Escape") { setMenu(false); search?.classList.remove("open"); lightbox?.classList.remove("open"); } });
 })();

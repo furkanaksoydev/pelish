@@ -60,7 +60,7 @@ function store_render_footer(): void
 {
     ?>
     <footer class="store-footer" id="footer"><div><a class="footer-logo" href="index.php"><img src="https://cdn.pelish.co/logo.png" alt="pelish"></a><p>Tekirdağ / Süleymanpaşa</p></div><div><small>PELISH’E YAKIN OL</small><a href="https://instagram.com/pelish.co" target="_blank" rel="noopener"><i class="fa-brands fa-instagram"></i> @pelish.co</a><a href="https://instagram.com/pelishaccessory" target="_blank" rel="noopener"><i class="fa-brands fa-instagram"></i> @pelishaccessory</a><a href="#"><i class="fa-brands fa-tiktok"></i> @pelish.co</a></div><div><small>HIZLI ERİŞİM</small><a href="indirimler.php">İndirim</a><a href="favorilerim.php">Favorilerim</a><a href="sepetim.php">Sepetim</a></div></footer>
-    <script src="assets/js/storefront-interactions.js"></script>
+    <script src="assets/js/storefront-ui-actions.js"></script>
   </body>
 </html>
     <?php
