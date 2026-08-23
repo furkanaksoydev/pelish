@@ -63,6 +63,8 @@ function panel_header(string $page, string $subTitle = '', array $subLinks = [])
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow">
+    <link rel="icon" href="https://cdn.pelish.co/logo.png" type="image/png">
+    <link rel="apple-touch-icon" href="https://cdn.pelish.co/logo.png">
     <title><?= e($pageTitle) ?> · pelish Yönetim Paneli</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono&family=DM+Sans:wght@400;500;600;700&display=swap">
