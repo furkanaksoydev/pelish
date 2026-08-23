@@ -186,13 +186,23 @@
     if (button?.disabled) return;
     if (button) button.disabled = true;
     try {
+      const formData = new FormData(form);
+      formData.set("_response", "json");
       const response = await fetch(form.action, {
         method: "POST",
-        body: new FormData(form),
+        body: formData,
         headers: { "X-Requested-With": "XMLHttpRequest", Accept: "application/json" },
         credentials: "same-origin",
       });
-      const result = await response.json();
+      const responseBody = await response.text();
+      let result;
+      try {
+        result = JSON.parse(responseBody);
+      } catch {
+        const responsePath = new URL(response.url, window.location.href).pathname;
+        if (response.redirected && /\/giris\.php$/i.test(responsePath)) { window.location.assign(response.url); return; }
+        throw new Error("Sunucu favori işlemi için geçerli bir yanıt vermedi. Lütfen sayfayı yenileyip tekrar dene.");
+      }
       if (result.requires_auth && result.redirect) { window.location.assign(result.redirect); return; }
       if (!response.ok || !result.ok) throw new Error(result.message || "Favori işlemi tamamlanamadı.");
       const productId = form.querySelector('input[name="product_id"]')?.value;

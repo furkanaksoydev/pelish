@@ -5,7 +5,8 @@ declare(strict_types=1);
 require __DIR__ . '/bootstrap.php';
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') { store_redirect('../index.php'); }
-$isAsync = strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest'
+$isAsync = (string) ($_POST['_response'] ?? '') === 'json'
+    || strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest'
     || str_contains(strtolower((string) ($_SERVER['HTTP_ACCEPT'] ?? '')), 'application/json');
 
 /** @param array<string, mixed> $payload */
@@ -93,11 +94,14 @@ try {
     } else {
         throw new RuntimeException('Bilinmeyen işlem.');
     }
-} catch (RuntimeException $exception) {
+} catch (Throwable $exception) {
+    $message = $exception instanceof RuntimeException
+        ? $exception->getMessage()
+        : 'Favori işlemi şu anda tamamlanamadı. Lütfen tekrar dene.';
     if ($isAsync) {
-        store_action_json(['ok' => false, 'message' => $exception->getMessage()], 422);
+        store_action_json(['ok' => false, 'message' => $message], 422);
     }
-    store_flash('danger', $exception->getMessage());
+    store_flash('danger', $message);
 }
 if ($isAsync && $isFavorite !== null) {
     store_action_json([
