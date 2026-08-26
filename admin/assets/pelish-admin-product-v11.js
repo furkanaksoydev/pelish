@@ -132,6 +132,47 @@
   };
   imageUpload?.addEventListener('change', renderPendingImages);
 
+  const colorList = document.querySelector('[data-product-color-list]');
+  const addColorButton = document.querySelector('[data-add-product-color]');
+  const imageChoices = () => [...document.querySelectorAll('.gallery-grid .variant-card')].map((card) => {
+    const input = card.querySelector('input[name="primary_image_id"]');
+    const label = card.querySelector('strong')?.textContent?.trim() || 'Görsel';
+    return input?.value ? { id: input.value, label } : null;
+  }).filter(Boolean);
+  const colorRow = (color = {}) => {
+    const row = document.createElement('div');
+    row.className = 'product-color-row';
+    const choices = imageChoices();
+    const options = ['<option value="0">Ana görseli kullan</option>', ...choices.map((choice) => `<option value="${choice.id}">#${choice.id} · ${choice.label}</option>`)].join('');
+    row.innerHTML = `<input type="hidden" name="color_ids[]" value="${color.id || ''}">
+      <label>Renk adı<input required name="color_names[]" value="${color.name || ''}" placeholder="Örn. Kırmızı"></label>
+      <label>Renk kodu<input type="color" name="color_hexes[]" value="${color.hex || '#c7b6a3'}"></label>
+      <label>Temsil eden görsel<select name="color_image_ids[]">${options}</select></label>
+      <button type="button" class="remove-product-color" data-remove-product-color aria-label="Rengi kaldır">×</button>`;
+    const select = row.querySelector('select');
+    if (select && color.imageId) select.value = String(color.imageId);
+    return row;
+  };
+  addColorButton?.addEventListener('click', () => {
+    if (!colorList) return;
+    colorList.append(colorRow());
+    colorList.lastElementChild?.querySelector('input[name="color_names[]"]')?.focus();
+  });
+  colorList?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-remove-product-color]');
+    if (!button) return;
+    const row = button.closest('.product-color-row');
+    const colorId = row?.querySelector('input[name="color_ids[]"]')?.value;
+    if (colorId) {
+      const removed = document.createElement('input');
+      removed.type = 'hidden';
+      removed.name = 'remove_color_ids[]';
+      removed.value = colorId;
+      colorList.append(removed);
+    }
+    row?.remove();
+  });
+
   const categorySelect = document.querySelector('[data-category-select]');
   const newCategoryField = document.querySelector('[data-new-category-field]');
   const syncCategoryField = () => {

@@ -93,14 +93,18 @@
     mainImage.alt = button.dataset.imageAlt || "Ürün görseli";
     if (selectedImage) selectedImage.value = button.dataset.imageId || "0";
     thumbs.forEach((item) => item.classList.toggle("active", item.dataset.imageId === button.dataset.imageId));
-    $$("[data-color-select]").forEach((item) => item.classList.toggle("active", item.dataset.colorKey === button.dataset.colorKey));
+    const mappedColor = $$("[data-color-select]").find((item) => item.dataset.imageId === button.dataset.imageId);
+    if (mappedColor) $$("[data-color-select]").forEach((item) => item.classList.toggle("active", item === mappedColor));
     if (colorName) colorName.textContent = button.dataset.colorName || "Varsayılan renk";
   };
   thumbs.forEach((button) => button.addEventListener("click", () => setImage(button)));
   $$("[data-color-select]").forEach((button) => button.addEventListener("click", () => {
     const related = thumbs.find((thumb) => thumb.dataset.imageId === button.dataset.imageId);
-    if (related) setImage(related);
-    else { if (selectedImage) selectedImage.value = button.dataset.imageId || "0"; $$("[data-color-select]").forEach((item) => item.classList.toggle("active", item === button)); if (colorName) colorName.textContent = button.dataset.colorName || "Varsayılan renk"; }
+    if (related) {
+      setImage(related);
+      $$("[data-color-select]").forEach((item) => item.classList.toggle("active", item === button));
+      if (colorName) colorName.textContent = button.dataset.colorName || "Varsayılan renk";
+    } else { if (selectedImage) selectedImage.value = button.dataset.imageId || "0"; $$("[data-color-select]").forEach((item) => item.classList.toggle("active", item === button)); if (colorName) colorName.textContent = button.dataset.colorName || "Varsayılan renk"; }
   }));
   $$(".detail-sizes input").forEach((input) => input.addEventListener("change", () => { const label = $("#selectedSizeLabel"); if (label) label.textContent = input.value; }));
 

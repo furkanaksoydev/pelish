@@ -181,6 +181,67 @@ function store_product_images(PDO $pdo, int $productId): array
     return $images;
 }
 
+/** @return array<int, array<string, mixed>> */
+function store_product_colors(PDO $pdo, int $productId, array $images): array
+{
+    $statement = $pdo->prepare(
+        'SELECT c.*, mapped.product_image_id, mapped.image_url
+         FROM pelish_product_colors c
+         LEFT JOIN (
+             SELECT ci.color_id, ci.product_image_id, i.image_url
+             FROM pelish_product_color_images ci
+             INNER JOIN pelish_product_images i ON i.id = ci.product_image_id
+             INNER JOIN (
+                 SELECT color_id, MIN(sort_order) AS min_sort FROM pelish_product_color_images GROUP BY color_id
+             ) first_image ON first_image.color_id = ci.color_id AND first_image.min_sort = ci.sort_order
+         ) mapped ON mapped.color_id = c.id
+         WHERE c.product_id = ? ORDER BY c.sort_order, c.id'
+    );
+    $statement->execute([$productId]);
+    $colors = $statement->fetchAll();
+    if ($colors) {
+        return $colors;
+    }
+
+    // Eski kayıtlar için geriye dönük güvenli görünüm. Yeni sürüm renkleri
+    // pelish_product_colors üzerinden okur ve bir görseli birden çok renge
+    // bağlayabilir.
+    $fallback = [];
+    foreach ($images as $image) {
+        $name = trim((string) ($image['color_name'] ?? ''));
+        if ($name === '') {
+            continue;
+        }
+        $key = mb_strtolower($name, 'UTF-8');
+        if (!isset($fallback[$key])) {
+            $fallback[$key] = [
+                'id' => 0,
+                'color_name' => $name,
+                'color_hex' => $image['color_hex'] ?? '#c7b6a3',
+                'product_image_id' => $image['id'] ?? 0,
+                'image_url' => $image['image_url'] ?? '',
+            ];
+        }
+    }
+    return array_values($fallback);
+}
+
+/** @return array<int, array{size_code: string, stock: int}> */
+function store_product_size_stocks(PDO $pdo, int $productId): array
+{
+    $statement = $pdo->prepare('SELECT size_code, stock FROM pelish_product_size_stocks WHERE product_id = ? ORDER BY FIELD(size_code, "XS", "S", "M", "L", "XL", "XXL")');
+    $statement->execute([$productId]);
+    return array_map(static fn(array $row): array => ['size_code' => (string) $row['size_code'], 'stock' => (int) $row['stock']], $statement->fetchAll());
+}
+
+function store_size_stock(PDO $pdo, int $productId, string $size): ?int
+{
+    $statement = $pdo->prepare('SELECT stock FROM pelish_product_size_stocks WHERE product_id = ? AND size_code = ? LIMIT 1');
+    $statement->execute([$productId, $size]);
+    $stock = $statement->fetchColumn();
+    return $stock === false ? null : (int) $stock;
+}
+
 /** @return list<string> */
 function store_active_categories(PDO $pdo, bool $discountOnly = false): array
 {
@@ -235,9 +296,16 @@ function store_add_to_cart(PDO $pdo, int $customerId, int $productId, int $image
     if (!$product || (int) $product['stock'] < 1) {
         throw new RuntimeException('Bu ürün şu anda stokta değil.');
     }
-    $sizes = ['S', 'M', 'L', 'XL', 'XXL'];
+    $sizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
     if (!in_array($size, $sizes, true)) {
         throw new RuntimeException('Lütfen bir beden seçin.');
+    }
+    $sizeStock = store_size_stock($pdo, $productId, $size);
+    if ($sizeStock === null) {
+        throw new RuntimeException('Bu beden bu ürün için sunulmuyor.');
+    }
+    if ($sizeStock < 1) {
+        throw new RuntimeException('Seçtiğin beden şu anda stokta yok.');
     }
     $image = null;
     if ($imageId > 0) {
@@ -249,6 +317,11 @@ function store_add_to_cart(PDO $pdo, int $customerId, int $productId, int $image
         }
     }
     $cartId = store_cart_id($pdo, $customerId);
+    $inCart = $pdo->prepare('SELECT COALESCE(SUM(quantity), 0) FROM pelish_customer_cart_items WHERE cart_id = ? AND product_id = ? AND selected_size = ?');
+    $inCart->execute([$cartId, $productId, $size]);
+    if ((int) $inCart->fetchColumn() >= $sizeStock) {
+        throw new RuntimeException('Bu beden için sepetteki adet stok sınırına ulaştı.');
+    }
     $find = $pdo->prepare('SELECT id, quantity FROM pelish_customer_cart_items WHERE cart_id = ? AND product_id = ? AND product_image_id <=> ? AND selected_size = ? LIMIT 1');
     $find->execute([$cartId, $productId, $image ? (int) $image['id'] : null, $size]);
     $line = $find->fetch();

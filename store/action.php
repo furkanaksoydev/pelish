@@ -100,6 +100,17 @@ try {
         $item = $line->fetch();
         if (!$item) { throw new RuntimeException('Sepet satırı bulunamadı.'); }
         if ($change < 0 && (int) $item['quantity'] <= 1) { throw new RuntimeException('Sepette en az bir ürün kalmalı.'); }
+        if ($change > 0) {
+            $sizeStock = store_size_stock($pdo, (int) $item['product_id'], (string) $item['selected_size']);
+            if ($sizeStock === null || $sizeStock < 1) {
+                throw new RuntimeException('Bu beden artık stokta yok.');
+            }
+            $lineTotal = $pdo->prepare('SELECT COALESCE(SUM(quantity), 0) FROM pelish_customer_cart_items WHERE cart_id = ? AND product_id = ? AND selected_size = ?');
+            $lineTotal->execute([(int) $item['cart_id'], (int) $item['product_id'], (string) $item['selected_size']]);
+            if ((int) $lineTotal->fetchColumn() >= $sizeStock) {
+                throw new RuntimeException('Bu beden için stok sınırına ulaştın.');
+            }
+        }
         $pdo->prepare('UPDATE pelish_customer_cart_items SET quantity = quantity + ? WHERE id = ?')->execute([$change, $lineId]);
         store_flash('success', 'Sepet adedi güncellendi.');
     } elseif ($action === 'cart-remove') {

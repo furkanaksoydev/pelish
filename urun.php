@@ -20,17 +20,10 @@ $images = store_product_images($pdo, (int) $product['id']);
 if (!$images && !empty($product['image_url'])) {
     $images = [['id' => 0, 'image_url' => (string) $product['image_url'], 'color_name' => null, 'color_hex' => null, 'is_primary' => 1]];
 }
-$colorOptions = [];
-foreach ($images as $index => $image) {
-    // Aynı isimli tonlar (ör. altı farklı lacivert çekimi) müşteriye tek renk
-    // seçeneği olarak görünür; yalnızca isim yoksa renk kodu ayırt edicidir.
-    $identity = mb_strtolower(trim((string) ($image['color_name'] ?: $image['color_hex'] ?: 'varsayılan')), 'UTF-8');
-    $images[$index]['color_key'] = 'color-' . substr(hash('sha256', $identity), 0, 12);
-    if (!isset($colorOptions[$identity])) {
-        $colorOptions[$identity] = $images[$index];
-    }
-}
-$primary = $images[0] ?? ['id' => 0, 'image_url' => 'https://cdn.pelish.co/pelishlogo.png', 'color_name' => null, 'color_hex' => null, 'color_key' => 'color-default'];
+$colorOptions = store_product_colors($pdo, (int) $product['id'], $images);
+$primary = $images[0] ?? ['id' => 0, 'image_url' => 'https://cdn.pelish.co/pelishlogo.png', 'color_name' => null, 'color_hex' => null];
+$primaryColor = $colorOptions[0] ?? ['color_name' => $primary['color_name'] ?: 'Varsayılan renk', 'color_hex' => $primary['color_hex'] ?: '#c7b6a3', 'product_image_id' => $primary['id']];
+$sizeStocks = store_product_size_stocks($pdo, (int) $product['id']);
 $customer = store_customer($pdo);
 $isFavorite = false;
 if ($customer) {
@@ -48,7 +41,7 @@ store_render_header($pdo);
       <div class="detail-main-image"><button type="button" class="image-expand" data-gallery-expand aria-label="Görseli büyüt"><img id="detailMainImage" src="<?= e($primary['image_url']) ?>" alt="<?= e($product['name']) ?>"></button></div>
       <div class="detail-thumbs" role="list">
         <?php foreach ($images as $index => $image): ?>
-          <button type="button" class="<?= $index === 0 ? 'active' : '' ?>" data-gallery-image data-image-id="<?= (int) $image['id'] ?>" data-color-key="<?= e($image['color_key']) ?>" data-image-url="<?= e($image['image_url']) ?>" data-image-alt="<?= e($product['name'] . ($image['color_name'] ? ' · ' . $image['color_name'] : '')) ?>" data-color-name="<?= e($image['color_name'] ?: 'Varsayılan renk') ?>"><img src="<?= e($image['image_url']) ?>" alt="<?= e($image['color_name'] ?: $product['name']) ?>"></button>
+          <button type="button" class="<?= $index === 0 ? 'active' : '' ?>" data-gallery-image data-image-id="<?= (int) $image['id'] ?>" data-image-url="<?= e($image['image_url']) ?>" data-image-alt="<?= e($product['name'] . ($image['color_name'] ? ' · ' . $image['color_name'] : '')) ?>" data-color-name="<?= e($image['color_name'] ?: 'Varsayılan renk') ?>"><img src="<?= e($image['image_url']) ?>" alt="<?= e($image['color_name'] ?: $product['name']) ?>"></button>
         <?php endforeach; ?>
       </div>
     </div>
@@ -62,15 +55,16 @@ store_render_header($pdo);
         <input type="hidden" name="product_id" value="<?= (int) $product['id'] ?>">
         <input type="hidden" name="image_id" id="selectedImageId" value="<?= (int) $primary['id'] ?>">
         <input type="hidden" name="return_to" value="<?= e('urun.php?id=' . (int) $product['id']) ?>">
-        <div class="choice-heading"><span>RENK</span><b id="selectedColorName"><?= e($primary['color_name'] ?: 'Varsayılan renk') ?></b></div>
+        <div class="choice-heading"><span>RENK</span><b id="selectedColorName"><?= e($primaryColor['color_name']) ?></b></div>
         <div class="detail-colors">
-          <?php foreach ($colorOptions as $image): ?>
-            <button class="<?= $image['color_key'] === $primary['color_key'] ? 'active' : '' ?>" type="button" data-color-select data-color-key="<?= e($image['color_key']) ?>" data-image-id="<?= (int) $image['id'] ?>" data-image-url="<?= e($image['image_url']) ?>" data-color-name="<?= e($image['color_name'] ?: 'Varsayılan renk') ?>" style="--swatch:<?= e($image['color_hex'] ?: '#c7b6a3') ?>" aria-label="<?= e($image['color_name'] ?: 'Renk seç') ?>"></button>
+          <?php foreach ($colorOptions as $index => $color): $mappedImageId = (int) ($color['product_image_id'] ?? $primary['id']); $mappedImageUrl = (string) ($color['image_url'] ?? $primary['image_url']); ?>
+            <button class="<?= $index === 0 ? 'active' : '' ?>" type="button" data-color-select data-image-id="<?= $mappedImageId ?>" data-image-url="<?= e($mappedImageUrl) ?>" data-color-name="<?= e($color['color_name'] ?: 'Varsayılan renk') ?>" style="--swatch:<?= e($color['color_hex'] ?: '#c7b6a3') ?>" aria-label="<?= e($color['color_name'] ?: 'Renk seç') ?>"></button>
           <?php endforeach; ?>
         </div>
         <div class="choice-heading"><span>BEDEN</span><b id="selectedSizeLabel">Beden seçin</b></div>
-        <div class="detail-sizes"><?php foreach (['S', 'M', 'L', 'XL', 'XXL'] as $size): ?><label><input type="radio" name="size" value="<?= $size ?>"><span><?= $size ?></span></label><?php endforeach; ?></div>
-        <div class="detail-actions"><button class="button button-dark" type="submit">Sepete ekle <span>→</span></button></div>
+        <div class="detail-sizes"><?php foreach ($sizeStocks as $size): ?><label class="<?= $size['stock'] < 1 ? 'is-sold-out' : '' ?>"><input type="radio" name="size" value="<?= e($size['size_code']) ?>" <?= $size['stock'] < 1 ? 'disabled' : '' ?>><span><?= e($size['size_code']) ?></span></label><?php endforeach; ?></div>
+        <?php if (!$sizeStocks): ?><p class="detail-stock-note">Bu ürün için henüz beden ve stok tanımlanmadı.</p><?php endif; ?>
+        <div class="detail-actions"><button class="button button-dark" type="submit" <?= !$sizeStocks ? 'disabled' : '' ?>>Sepete ekle <span>→</span></button></div>
       </form>
       <form method="post" action="store/action.php" data-favorite-form>
         <input type="hidden" name="csrf" value="<?= e(store_csrf()) ?>">

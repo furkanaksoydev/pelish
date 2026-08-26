@@ -61,6 +61,15 @@ function pelish_run_migrations(PDO $pdo): void
         pelish_install_collection_finance_features($pdo);
         pelish_mark_migration($pdo, $version);
     }
+
+    // Renk bir görsele bağlı tekil alan değildir: aynı görsel birden fazla
+    // satış rengini temsil edebilir. Beden stokları da ürün toplamından ayrı
+    // tutulur; müşteri yalnızca tanımlanmış bedenleri seçebilir.
+    $version = 'product-colors-and-size-stock-v1';
+    if (!pelish_migration_applied($pdo, $version)) {
+        pelish_install_product_color_and_size_features($pdo);
+        pelish_mark_migration($pdo, $version);
+    }
 }
 
 function pelish_migration_applied(PDO $pdo, string $version): bool
@@ -308,4 +317,62 @@ SQL);
         $seed = $pdo->prepare('INSERT IGNORE INTO pelish_home_collection_slots (slot_key, product_id) VALUES (?, ?)');
         $seed->execute(['collection-4', $firstProductId]);
     }
+}
+
+function pelish_install_product_color_and_size_features(PDO $pdo): void
+{
+    $pdo->exec(<<<'SQL'
+CREATE TABLE IF NOT EXISTS pelish_product_colors (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    product_id INT UNSIGNED NOT NULL,
+    color_name VARCHAR(100) NOT NULL,
+    color_hex CHAR(7) NOT NULL DEFAULT '#c7b6a3',
+    sort_order INT UNSIGNED NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_product_color_name (product_id, color_name),
+    INDEX idx_product_colors_order (product_id, sort_order),
+    CONSTRAINT fk_pelish_product_color_product FOREIGN KEY (product_id) REFERENCES pelish_products(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS pelish_product_color_images (
+    color_id INT UNSIGNED NOT NULL,
+    product_image_id INT UNSIGNED NOT NULL,
+    sort_order INT UNSIGNED NOT NULL DEFAULT 0,
+    PRIMARY KEY (color_id, product_image_id),
+    INDEX idx_product_color_images_image (product_image_id),
+    CONSTRAINT fk_pelish_product_color_image_color FOREIGN KEY (color_id) REFERENCES pelish_product_colors(id) ON DELETE CASCADE,
+    CONSTRAINT fk_pelish_product_color_image_image FOREIGN KEY (product_image_id) REFERENCES pelish_product_images(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS pelish_product_size_stocks (
+    product_id INT UNSIGNED NOT NULL,
+    size_code VARCHAR(10) NOT NULL,
+    stock INT UNSIGNED NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (product_id, size_code),
+    CONSTRAINT fk_pelish_product_size_stock_product FOREIGN KEY (product_id) REFERENCES pelish_products(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+SQL);
+
+    // Önceki sürümlerde görselde tanımlı renk varsa onu yeni renk havuzuna
+    // aktarır ve aynı görseli bu renge bağlar. Böylece canlıdaki ürünler
+    // geçişten sonra renk seçimini kaybetmez.
+    $pdo->exec(<<<'SQL'
+INSERT IGNORE INTO pelish_product_colors (product_id, color_name, color_hex, sort_order)
+SELECT product_id, color_name, COALESCE(NULLIF(color_hex, ''), '#c7b6a3'), MIN(sort_order)
+FROM pelish_product_images
+WHERE color_name IS NOT NULL AND TRIM(color_name) <> ''
+GROUP BY product_id, color_name;
+
+INSERT IGNORE INTO pelish_product_color_images (color_id, product_image_id, sort_order)
+SELECT c.id, i.id, i.sort_order
+FROM pelish_product_images i
+INNER JOIN pelish_product_colors c ON c.product_id = i.product_id AND c.color_name = i.color_name
+WHERE i.color_name IS NOT NULL AND TRIM(i.color_name) <> '';
+
+INSERT IGNORE INTO pelish_product_size_stocks (product_id, size_code, stock)
+SELECT id, 'M', stock FROM pelish_products WHERE stock > 0;
+SQL);
 }
