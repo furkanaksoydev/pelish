@@ -30,6 +30,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $create = $pdo->prepare('INSERT INTO pelish_customers (first_name, last_name, email, phone, password_hash, email_verified_at, is_active) VALUES (?, ?, ?, ?, ?, NOW(), 1)');
             $create->execute([$verification['first_name'], $verification['last_name'], $verification['email'], $verification['phone'], $verification['password_hash']]);
             $customerId = (int) $pdo->lastInsertId();
+            $consent = $pdo->prepare('INSERT INTO pelish_customer_consents (customer_id, consent_type, is_granted, source, consent_text_version, ip_address, user_agent, granted_at) VALUES (?, ?, ?, "register", "2026-08", ?, ?, ?) ON DUPLICATE KEY UPDATE is_granted=VALUES(is_granted), source=VALUES(source), consent_text_version=VALUES(consent_text_version), ip_address=VALUES(ip_address), user_agent=VALUES(user_agent), granted_at=VALUES(granted_at), withdrawn_at=NULL');
+            $now = date('Y-m-d H:i:s');
+            $ip = substr((string) ($_SERVER['REMOTE_ADDR'] ?? ''), 0, 45);
+            $agent = substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 500);
+            $consent->execute([$customerId, 'kvkk_membership', (int) ($verification['kvkk_accepted'] ?? 0), $ip, $agent, $now]);
+            $consent->execute([$customerId, 'marketing_email_sms', (int) ($verification['marketing_consent'] ?? 0), $ip, $agent, (int) ($verification['marketing_consent'] ?? 0) ? $now : null]);
             $pdo->prepare('DELETE FROM pelish_email_verifications WHERE id=?')->execute([$verification['id']]);
             $pdo->commit();
             store_login_customer(['id' => $customerId]);

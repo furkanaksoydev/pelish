@@ -8,14 +8,14 @@ $customer = store_require_customer($pdo);
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     store_verify_csrf();
     $email = mb_strtolower(trim((string) ($_POST['email'] ?? '')), 'UTF-8');
-    $phone = trim((string) ($_POST['phone'] ?? ''));
+    $phone = store_normalize_phone((string) ($_POST['phone'] ?? ''));
     $currentPassword = (string) ($_POST['current_password'] ?? '');
     $newPassword = (string) ($_POST['new_password'] ?? '');
     $newPasswordConfirm = (string) ($_POST['new_password_confirm'] ?? '');
 
     if (!password_verify($currentPassword, (string) ($customer['password_hash'] ?? ''))) {
         store_flash('danger', 'Değişiklikleri kaydetmek için mevcut şifreni doğru girmelisin.');
-    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL) || $phone === '') {
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL) || !store_phone_is_valid($phone)) {
         store_flash('danger', 'Geçerli e-posta ve telefon numarası gir.');
     } elseif ($newPassword !== '' && (strlen($newPassword) < 8 || $newPassword !== $newPasswordConfirm)) {
         store_flash('danger', 'Yeni şifren en az 8 karakter olmalı ve tekrarıyla eşleşmeli.');

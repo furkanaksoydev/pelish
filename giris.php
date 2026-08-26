@@ -35,13 +35,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             'first_name' => trim((string) ($_POST['first_name'] ?? '')),
             'last_name' => trim((string) ($_POST['last_name'] ?? '')),
             'email' => mb_strtolower(trim((string) ($_POST['email'] ?? '')), 'UTF-8'),
-            'phone' => trim((string) ($_POST['phone'] ?? '')),
+            'phone' => store_normalize_phone((string) ($_POST['phone'] ?? '')),
             'password' => (string) ($_POST['password'] ?? ''),
+            'kvkk_accepted' => isset($_POST['kvkk_accepted']) ? 1 : 0,
+            'marketing_consent' => isset($_POST['marketing_consent']) ? 1 : 0,
         ];
-        if ($data['first_name'] === '' || $data['last_name'] === '' || !filter_var($data['email'], FILTER_VALIDATE_EMAIL) || $data['phone'] === '') {
+        if ($data['first_name'] === '' || $data['last_name'] === '' || !filter_var($data['email'], FILTER_VALIDATE_EMAIL) || !store_phone_is_valid($data['phone'])) {
             store_flash('danger', 'Lütfen tüm bilgilerini geçerli biçimde doldur.');
         } elseif (mb_strlen($data['password']) < 8) {
             store_flash('danger', 'Şifren en az 8 karakter olmalı.');
+        } elseif (!$data['kvkk_accepted']) {
+            store_flash('danger', 'Üyelik için KVKK aydınlatma metnini okuduğunu onaylamalısın.');
         } else {
             $exists = $pdo->prepare('SELECT COUNT(*) FROM pelish_customers WHERE email = ?');
             $exists->execute([$data['email']]);
@@ -54,6 +58,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 } else {
                     $upsert = $pdo->prepare('INSERT INTO pelish_email_verifications (first_name, last_name, email, phone, password_hash, code_hash, expires_at, attempts) VALUES (?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 3 MINUTE), 0) ON DUPLICATE KEY UPDATE first_name=VALUES(first_name), last_name=VALUES(last_name), phone=VALUES(phone), password_hash=VALUES(password_hash), code_hash=VALUES(code_hash), expires_at=DATE_ADD(NOW(), INTERVAL 3 MINUTE), attempts=0');
                     $upsert->execute([$data['first_name'], $data['last_name'], $data['email'], $data['phone'], password_hash($data['password'], PASSWORD_DEFAULT), password_hash($code, PASSWORD_DEFAULT)]);
+                    $consent = $pdo->prepare('UPDATE pelish_email_verifications SET kvkk_accepted = ?, marketing_consent = ? WHERE email = ?');
+                    $consent->execute([$data['kvkk_accepted'], $data['marketing_consent'], $data['email']]);
                     $_SESSION['pelish_verify_email'] = $data['email'];
                     store_flash('success', '6 haneli doğrulama kodunu e-posta adresine gönderdik. Kod 3 dakika geçerli.');
                     store_redirect('dogrula.php');

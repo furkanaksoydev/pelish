@@ -49,6 +49,18 @@ function pelish_run_migrations(PDO $pdo): void
         pelish_drop_column($pdo, 'pelish_customers', 'username');
         pelish_mark_migration($pdo, $version);
     }
+
+    $version = 'storefront-address-checkout-and-vitrin-v1';
+    if (!pelish_migration_applied($pdo, $version)) {
+        pelish_install_storefront_checkout_features($pdo);
+        pelish_mark_migration($pdo, $version);
+    }
+
+    $version = 'collection-four-finance-and-image-ordering-v1';
+    if (!pelish_migration_applied($pdo, $version)) {
+        pelish_install_collection_finance_features($pdo);
+        pelish_mark_migration($pdo, $version);
+    }
 }
 
 function pelish_migration_applied(PDO $pdo, string $version): bool
@@ -169,5 +181,131 @@ SQL);
     if ($adminCount === 0) {
         $seedAdmin = $pdo->prepare('INSERT INTO pelish_admin_accounts (username, password_hash) VALUES (?, ?)');
         $seedAdmin->execute(['pelish', '$2y$10$4OHUa1yhVY3nlwHRIa5BP.NJMmwkH3AXjf.x8n/KDOefPFiJCax6W']);
+    }
+}
+
+function pelish_install_storefront_checkout_features(PDO $pdo): void
+{
+    pelish_add_column($pdo, 'pelish_email_verifications', 'kvkk_accepted', 'TINYINT(1) NOT NULL DEFAULT 0 AFTER password_hash');
+    pelish_add_column($pdo, 'pelish_email_verifications', 'marketing_consent', 'TINYINT(1) NOT NULL DEFAULT 0 AFTER kvkk_accepted');
+    pelish_add_column($pdo, 'pelish_orders', 'address_id', 'BIGINT UNSIGNED NULL AFTER customer_id');
+    pelish_add_column($pdo, 'pelish_orders', 'recipient_name', 'VARCHAR(200) NULL AFTER address_id');
+    pelish_add_column($pdo, 'pelish_orders', 'recipient_phone', 'VARCHAR(40) NULL AFTER recipient_name');
+    pelish_add_column($pdo, 'pelish_orders', 'shipping_address', 'TEXT NULL AFTER recipient_phone');
+    pelish_add_column($pdo, 'pelish_orders', 'payment_status', "ENUM('Bekliyor','Ödendi','Başarısız','İade') NOT NULL DEFAULT 'Bekliyor' AFTER payment_method");
+    pelish_add_column($pdo, 'pelish_orders', 'payment_reference', 'VARCHAR(190) NULL AFTER payment_status');
+    pelish_add_column($pdo, 'pelish_orders', 'terms_accepted_at', 'DATETIME NULL AFTER note');
+    pelish_add_column($pdo, 'pelish_orders', 'kvkk_accepted_at', 'DATETIME NULL AFTER terms_accepted_at');
+    pelish_add_column($pdo, 'pelish_orders', 'marketing_consent', 'TINYINT(1) NOT NULL DEFAULT 0 AFTER kvkk_accepted_at');
+
+    $pdo->exec(<<<'SQL'
+CREATE TABLE IF NOT EXISTS pelish_customer_addresses (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT UNSIGNED NOT NULL,
+    title VARCHAR(100) NOT NULL,
+    recipient_name VARCHAR(200) NOT NULL,
+    phone VARCHAR(40) NOT NULL,
+    city VARCHAR(100) NOT NULL,
+    district VARCHAR(100) NOT NULL,
+    neighborhood VARCHAR(150) NULL,
+    address_line TEXT NOT NULL,
+    postal_code VARCHAR(20) NULL,
+    is_default TINYINT(1) NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_customer_addresses_customer (customer_id, is_default),
+    CONSTRAINT fk_pelish_customer_address_customer FOREIGN KEY (customer_id) REFERENCES pelish_customers(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+SQL);
+
+    $pdo->exec(<<<'SQL'
+CREATE TABLE IF NOT EXISTS pelish_customer_consents (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    customer_id INT UNSIGNED NOT NULL,
+    consent_type VARCHAR(60) NOT NULL,
+    is_granted TINYINT(1) NOT NULL DEFAULT 0,
+    source VARCHAR(100) NOT NULL DEFAULT 'web',
+    consent_text_version VARCHAR(40) NOT NULL DEFAULT '2026-08',
+    ip_address VARCHAR(45) NULL,
+    user_agent VARCHAR(500) NULL,
+    granted_at DATETIME NULL,
+    withdrawn_at DATETIME NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_customer_consent (customer_id, consent_type),
+    CONSTRAINT fk_pelish_customer_consent_customer FOREIGN KEY (customer_id) REFERENCES pelish_customers(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+SQL);
+
+    $pdo->exec(<<<'SQL'
+CREATE TABLE IF NOT EXISTS pelish_order_documents (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    order_id INT UNSIGNED NOT NULL,
+    document_type VARCHAR(60) NOT NULL,
+    document_title VARCHAR(190) NOT NULL,
+    document_version VARCHAR(40) NOT NULL,
+    document_html MEDIUMTEXT NOT NULL,
+    document_hash CHAR(64) NOT NULL,
+    approved_at DATETIME NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_order_document (order_id, document_type),
+    CONSTRAINT fk_pelish_order_document_order FOREIGN KEY (order_id) REFERENCES pelish_orders(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+SQL);
+
+    $pdo->exec(<<<'SQL'
+CREATE TABLE IF NOT EXISTS pelish_home_collection_slots (
+    slot_key VARCHAR(40) NOT NULL PRIMARY KEY,
+    product_id INT UNSIGNED NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_pelish_home_slot_product FOREIGN KEY (product_id) REFERENCES pelish_products(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+SQL);
+
+    $firstProductId = (int) $pdo->query('SELECT id FROM pelish_products ORDER BY id LIMIT 1')->fetchColumn();
+    if ($firstProductId > 0) {
+        $seed = $pdo->prepare('INSERT IGNORE INTO pelish_home_collection_slots (slot_key, product_id) VALUES (?, ?)');
+        foreach (['collection-1', 'collection-2', 'collection-3'] as $slotKey) {
+            $seed->execute([$slotKey, $firstProductId]);
+        }
+    }
+}
+
+function pelish_install_collection_finance_features(PDO $pdo): void
+{
+    $pdo->exec(<<<'SQL'
+CREATE TABLE IF NOT EXISTS pelish_finance_purchases (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    supplier_name VARCHAR(190) NOT NULL,
+    product_name VARCHAR(190) NOT NULL,
+    quantity INT UNSIGNED NOT NULL,
+    unit_price DECIMAL(12,2) NOT NULL,
+    total_amount DECIMAL(12,2) NOT NULL,
+    invoice_date DATE NOT NULL,
+    note VARCHAR(1000) NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_finance_purchase_supplier_date (supplier_name, invoice_date),
+    INDEX idx_finance_purchase_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS pelish_finance_payments (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    supplier_name VARCHAR(190) NOT NULL,
+    purchase_id BIGINT UNSIGNED NULL,
+    paid_amount DECIMAL(12,2) NOT NULL,
+    paid_at DATE NOT NULL,
+    note VARCHAR(1000) NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_finance_payment_supplier_date (supplier_name, paid_at),
+    CONSTRAINT fk_pelish_finance_payment_purchase FOREIGN KEY (purchase_id) REFERENCES pelish_finance_purchases(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+SQL);
+
+    $firstProductId = (int) $pdo->query('SELECT id FROM pelish_products ORDER BY id LIMIT 1')->fetchColumn();
+    if ($firstProductId > 0) {
+        $seed = $pdo->prepare('INSERT IGNORE INTO pelish_home_collection_slots (slot_key, product_id) VALUES (?, ?)');
+        $seed->execute(['collection-4', $firstProductId]);
     }
 }

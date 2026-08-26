@@ -34,12 +34,14 @@ function panel_page_meta(string $page): array
 {
     return [
         'dashboard' => ['Ana Sayfa', 'panel-dashboard'],
+        'storefront' => ['Ana Sayfa Vitrini', 'panel-dashboard'],
         'products' => ['Ürün Yönetimi', 'panel-products'],
         'orders' => ['Siparişler', 'panel-orders'],
         'marketplaces' => ['Pazaryeri Mağazaları', 'panel-marketplaces'],
         'vouchers' => ['Hediye Çekleri', 'panel-vouchers'],
         'customers' => ['Müşteriler', 'panel-customers'],
         'reports' => ['Raporlar', 'panel-reports'],
+        'finance' => ['Finans', 'panel-finance'],
         'catalog' => ['Ürün Yönetimi', 'panel-products'],
     ][$page] ?? ['Yönetim Paneli', 'panel-dashboard'];
 }
@@ -49,12 +51,14 @@ function panel_header(string $page, string $subTitle = '', array $subLinks = [])
     [$pageTitle, $activeClass] = panel_page_meta($page);
     $nav = [
         'dashboard' => ['Ana Sayfa', 'fa-house'],
+        'storefront' => ['Vitrin', 'fa-window-maximize'],
         'orders' => ['Siparişler', 'fa-bag-shopping'],
         'products' => ['Ürünler', 'fa-tags'],
         'marketplaces' => ['Pazaryeri', 'fa-store'],
         'vouchers' => ['Kampanyalar', 'fa-bullhorn'],
         'customers' => ['Müşteriler', 'fa-users'],
         'reports' => ['Raporlar', 'fa-chart-line'],
+        'finance' => ['Finans', 'fa-wallet'],
     ];
     ?>
 <!doctype html>
@@ -63,20 +67,20 @@ function panel_header(string $page, string $subTitle = '', array $subLinks = [])
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex,nofollow">
-    <link rel="icon" href="https://cdn.pelish.co/logo.png" type="image/png">
-    <link rel="apple-touch-icon" href="https://cdn.pelish.co/logo.png">
+    <link rel="icon" href="https://cdn.pelish.co/pelishlogo.png" type="image/png">
+    <link rel="apple-touch-icon" href="https://cdn.pelish.co/pelishlogo.png">
     <title><?= e($pageTitle) ?> · pelish Yönetim Paneli</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono&family=DM+Sans:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-    <link rel="stylesheet" href="assets/pelish-admin-console.css?v=20260823">
+    <link rel="stylesheet" href="assets/pelish-admin-finance-v8.css">
   </head>
   <body>
     <div class="page-loader" id="pageLoader"><span></span><small>Yükleniyor…</small></div>
     <header class="topline"><div class="shell"><span>PELISH CONTROL · V 1.1.0</span><div class="top-actions"><a href="../index.php" target="_blank"><i class="fa-solid fa-arrow-up-right-from-square"></i> Siteyi Görüntüle</a><a href="account.php"><i class="fa-solid fa-gear"></i> Hesap</a><a href="logout.php"><i class="fa-solid fa-arrow-right-from-bracket"></i> Çıkış</a></div></div></header>
     <header class="main-header">
       <div class="shell header-row">
-        <a class="panel-logo" href="<?= admin_url('dashboard') ?>" aria-label="pelish panel ana sayfa"><img src="https://cdn.pelish.co/logo.png" alt="pelish"></a>
+        <a class="panel-logo" href="<?= admin_url('dashboard') ?>" aria-label="pelish panel ana sayfa"><img src="https://cdn.pelish.co/pelishlogo.png" alt="pelish"></a>
         <button class="mobile-menu" type="button" aria-label="Menüyü aç" aria-expanded="false"><i class="fa-solid fa-bars"></i></button>
         <nav class="mega-nav" aria-label="Yönetim menüsü">
           <?php foreach ($nav as $key => [$label, $icon]): ?>
@@ -87,7 +91,7 @@ function panel_header(string $page, string $subTitle = '', array $subLinks = [])
       </div>
       <div class="mega-menu"><div class="shell menu-grid">
         <section><h3>Ürün Yönetimi</h3><a href="<?= admin_url('products') ?>">Ürünler</a><a href="<?= admin_url('catalog', ['type' => 'categories']) ?>">Kategoriler</a><a href="<?= admin_url('catalog', ['type' => 'brands']) ?>">Markalar</a><a href="<?= admin_url('catalog', ['type' => 'tags']) ?>">Etiketler</a></section>
-        <section><h3>Sipariş ve müşteri</h3><a href="<?= admin_url('orders') ?>">Siparişler</a><a href="<?= admin_url('customers') ?>">Müşteriler</a><a href="<?= admin_url('vouchers') ?>">Hediye Çekleri</a><a href="<?= admin_url('reports') ?>">Satış Raporları</a></section>
+        <section><h3>Sipariş ve müşteri</h3><a href="<?= admin_url('orders') ?>">Siparişler</a><a href="<?= admin_url('customers') ?>">Müşteriler</a><a href="<?= admin_url('vouchers') ?>">Hediye Çekleri</a><a href="<?= admin_url('reports') ?>">Satış Raporları</a><a href="<?= admin_url('finance') ?>">Finans</a></section>
         <section><h3>Satış kanalları</h3><a href="<?= admin_url('marketplaces') ?>">Pazaryeri Mağazaları</a></section>
       </div></div>
     </header>
@@ -105,7 +109,7 @@ function panel_footer(): void
     </main>
     <footer class="panel-footer"><div class="shell">Version: 1.0.0 <span>·</span> pelish Yönetim Paneli</div></footer>
     <div class="toast" id="toast" role="status"></div>
-    <script src="assets/pelish-admin-console.js"></script>
+    <script src="assets/pelish-admin-finance-v8.js"></script>
   </body>
 </html>
     <?php

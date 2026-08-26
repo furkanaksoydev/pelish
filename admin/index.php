@@ -6,11 +6,13 @@ require __DIR__ . '/bootstrap.php';
 require __DIR__ . '/auth.php';
 require __DIR__ . '/panel.php';
 require __DIR__ . '/r2.php';
+require __DIR__ . '/storefront-content.php';
+require __DIR__ . '/finance.php';
 
 try { $pdo->query('SELECT 1 FROM pelish_products LIMIT 1'); } catch (PDOException $exception) { header('Location: setup.php'); exit; }
 admin_require_login();
 
-$pages = ['dashboard', 'products', 'orders', 'marketplaces', 'vouchers', 'customers', 'reports', 'catalog'];
+$pages = ['dashboard', 'storefront', 'products', 'orders', 'marketplaces', 'vouchers', 'customers', 'reports', 'catalog', 'finance'];
 $requestedPage = (string) ($_GET['page'] ?? 'dashboard');
 $page = in_array($requestedPage, $pages, true) ? $requestedPage : 'dashboard';
 $r2Settings = r2_settings($config);
@@ -36,6 +38,8 @@ function modal(string $page, string $label, string $title, string $content): voi
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf(); $action = (string) ($_POST['action'] ?? '');
+    if (admin_finance_handle_action($pdo, $action)) { exit; }
+    if ($action === 'save-home-collection-slots') { admin_save_home_collection_slots($pdo); }
     if ($action === 'save-product') {
         $id=(int)($_POST['id']??0); $existingImage = null;
         if ($id) { $imageStatement = $pdo->prepare('SELECT image_url, image_key, sku, barcode, desi FROM pelish_products WHERE id = ?'); $imageStatement->execute([$id]); $existingImage = $imageStatement->fetch() ?: null; }
@@ -47,6 +51,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if($id){$data['id']=$id;$pdo->prepare('UPDATE pelish_products SET name=:name,category=:category,sku=:sku,barcode=:barcode,image_url=:image_url,image_key=:image_key,sale_price=:sale_price,list_price=:list_price,cost_price=:cost_price,stock=:stock,desi=:desi,is_active=:is_active WHERE id=:id')->execute($data);$productId=$id;}else{$pdo->prepare('INSERT INTO pelish_products (name,category,sku,barcode,image_url,image_key,sale_price,list_price,cost_price,stock,desi,is_active) VALUES (:name,:category,:sku,:barcode,:image_url,:image_key,:sale_price,:list_price,:cost_price,:stock,:desi,:is_active)')->execute($data);$productId=(int)$pdo->lastInsertId();}
             $uploadedCount = upload_product_images($pdo, $r2Settings, $productId, $data['name'], $_FILES['product_images'] ?? [], $_POST['image_color_names'] ?? [], $_POST['image_color_hexes'] ?? [], (int) ($_POST['primary_upload_index'] ?? -1));
             if (isset($_POST['primary_image_id']) && (int) $_POST['primary_image_id'] > 0) { $primary = $pdo->prepare('SELECT * FROM pelish_product_images WHERE id = ? AND product_id = ?'); $primary->execute([(int) $_POST['primary_image_id'], $productId]); if ($primaryImage = $primary->fetch()) { $pdo->prepare('UPDATE pelish_product_images SET is_primary = 0 WHERE product_id = ?')->execute([$productId]); $pdo->prepare('UPDATE pelish_product_images SET is_primary = 1 WHERE id = ?')->execute([$primaryImage['id']]); $pdo->prepare('UPDATE pelish_products SET image_url = ?, image_key = ? WHERE id = ?')->execute([$primaryImage['image_url'], $primaryImage['image_key'], $productId]); } }
+            $imageOrder = array_values(array_unique(array_filter(array_map('intval', explode(',', (string) ($_POST['image_order'] ?? ''))), static fn (int $imageId): bool => $imageId > 0)));
+            if ($imageOrder) { $orderStatement = $pdo->prepare('UPDATE pelish_product_images SET sort_order = ? WHERE id = ? AND product_id = ?'); foreach ($imageOrder as $position => $imageId) { $orderStatement->execute([$position + 1, $imageId, $productId]); } }
             admin_flash('success',($uploadedCount ? $uploadedCount . ' görsel R2’ye yüklendi. ' : '') . ($id?'Ürün güncellendi.':'Yeni ürün oluşturuldu.'));
         } catch(Throwable $e){ admin_flash('danger','Ürün kaydedilemedi: '.$e->getMessage()); }
         redirect_page('products');
@@ -140,4 +146,4 @@ function reports(PDO $pdo): void {
 
 require __DIR__ . '/customer-intent.php';
 
-match($page){'products'=>products($pdo,$r2Settings),'orders'=>orders($pdo),'marketplaces'=>marketplaces($pdo),'vouchers'=>vouchers($pdo),'customers'=>customers($pdo),'catalog'=>catalog($pdo),'reports'=>reports($pdo),default=>dashboard($pdo)};
+match($page){'storefront'=>admin_render_storefront_content($pdo),'products'=>products($pdo,$r2Settings),'orders'=>orders($pdo),'marketplaces'=>marketplaces($pdo),'vouchers'=>vouchers($pdo),'customers'=>customers($pdo),'catalog'=>catalog($pdo),'reports'=>reports($pdo),'finance'=>admin_render_finance($pdo),default=>dashboard($pdo)};

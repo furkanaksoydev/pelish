@@ -8,10 +8,22 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') { store_redirect('../index.php'); }
 $isAsync = (string) ($_POST['_response'] ?? '') === 'json'
     || strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest'
     || str_contains(strtolower((string) ($_SERVER['HTTP_ACCEPT'] ?? '')), 'application/json');
+$pelishAsyncOutputLevel = ob_get_level();
+if ($isAsync) {
+    // PHP uyarıları ekrana basılsa bile AJAX sözleşmesi JSON kalır. Uyarılar
+    // sunucunun hata günlüğünde tutulur; istemci HTML yanıtı yüzünden başka
+    // bir sayfaya yönlendirilmez.
+    ini_set('display_errors', '0');
+    ob_start();
+}
 
 /** @param array<string, mixed> $payload */
 function store_action_json(array $payload, int $status = 200): never
 {
+    global $pelishAsyncOutputLevel;
+    while (ob_get_level() > (int) $pelishAsyncOutputLevel) {
+        ob_end_clean();
+    }
     http_response_code($status);
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store');
@@ -19,9 +31,17 @@ function store_action_json(array $payload, int $status = 200): never
     exit;
 }
 
-store_verify_csrf();
+// AJAX istekleri için hata dâhil her koşulda JSON döndürürüz. Böylece
+// tarayıcı bir yönlendirme ya da hata sayfasını JSON olarak yorumlamaya çalışmaz.
+$csrf = $_POST['csrf'] ?? '';
+if (!is_string($csrf) || !hash_equals(store_csrf(), $csrf)) {
+    if ($isAsync) {
+        store_action_json(['ok' => false, 'message' => 'Oturumun yenilendi. Sayfayı yenileyip tekrar dene.'], 419);
+    }
+    store_verify_csrf();
+}
 $action = (string) ($_POST['action'] ?? '');
-$returnTo = store_safe_return($_POST['return_to'] ?? null);
+$returnTo = store_safe_return($_POST['return_to'] ?? null, store_referer_return());
 // Adet ve satır silme yalnızca sepet bağlamında çalışır. Dönüş adresi
 // istemciden gelse bile bu işlemleri sepet ekranına sabitliyoruz.
 if (in_array($action, ['cart-quantity', 'cart-remove'], true)) {
@@ -68,7 +88,7 @@ try {
     if ($action === 'favorite') {
         $isFavorite = store_toggle_favorite($pdo, (int) $customer['id'], $productId);
         $message = $isFavorite ? 'Favorilerine eklendi.' : 'Favorilerinden çıkarıldı.';
-        store_flash('success', $message);
+        if (!$isAsync) { store_flash('success', $message); }
     } elseif ($action === 'cart') {
         store_flash('success', store_add_to_cart($pdo, (int) $customer['id'], $productId, (int) $pending['image_id'], (string) $pending['size']));
     } elseif ($action === 'cart-quantity') {
@@ -90,7 +110,7 @@ try {
         $pdo->prepare('DELETE FROM pelish_customer_favorites WHERE customer_id=? AND product_id=?')->execute([$customer['id'], $productId]);
         $isFavorite = false;
         $message = 'Ürün favorilerinden kaldırıldı.';
-        store_flash('success', $message);
+        if (!$isAsync) { store_flash('success', $message); }
     } else {
         throw new RuntimeException('Bilinmeyen işlem.');
     }
@@ -104,10 +124,21 @@ try {
     store_flash('danger', $message);
 }
 if ($isAsync && $isFavorite !== null) {
+    // Bildirim sayacı yardımcı bir veridir; sayacı okurken oluşabilecek bir
+    // hata, başarılı favori işleminin JSON yanıtını hiçbir zaman HTML hata
+    // sayfasına dönüştürmemeli.
+    $favoriteTotal = 0;
+    try {
+        $favoriteCount = $pdo->prepare('SELECT COUNT(*) FROM pelish_customer_favorites WHERE customer_id = ?');
+        $favoriteCount->execute([$customer['id']]);
+        $favoriteTotal = (int) $favoriteCount->fetchColumn();
+    } catch (Throwable $ignored) {
+        $favoriteTotal = 0;
+    }
     store_action_json([
         'ok' => true,
         'is_favorite' => $isFavorite,
-        'favorite_count' => store_counts($pdo, $customer)['favorites'],
+        'favorite_count' => $favoriteTotal,
         'message' => $message,
     ]);
 }

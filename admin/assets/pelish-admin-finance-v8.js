@@ -143,4 +143,56 @@
   categorySelect?.addEventListener('change', syncCategoryField);
   syncCategoryField();
 
+  const gallery = document.querySelector('.gallery-grid');
+  if (gallery) {
+    const form = gallery.closest('form');
+    let orderInput = form?.querySelector('input[name="image_order"]');
+    if (form && !orderInput) {
+      orderInput = document.createElement('input');
+      orderInput.type = 'hidden';
+      orderInput.name = 'image_order';
+      form.append(orderInput);
+    }
+    const cards = () => [...gallery.querySelectorAll('.variant-card')];
+    const syncImageOrder = () => {
+      if (!orderInput) return;
+      orderInput.value = cards().map((card) => card.dataset.imageId || '').filter(Boolean).join(',');
+    };
+    cards().forEach((card) => {
+      const id = card.querySelector('input[name="primary_image_id"]')?.value;
+      if (!id) return;
+      card.dataset.imageId = id;
+      card.draggable = true;
+      card.setAttribute('aria-label', 'Görsel sıralama kartı');
+      card.addEventListener('dragstart', () => card.classList.add('is-dragging'));
+      card.addEventListener('dragend', () => { card.classList.remove('is-dragging'); syncImageOrder(); });
+      card.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        const dragging = gallery.querySelector('.is-dragging');
+        if (!dragging || dragging === card) return;
+        const box = card.getBoundingClientRect();
+        gallery.insertBefore(dragging, event.clientY < box.top + box.height / 2 ? card : card.nextSibling);
+      });
+    });
+    syncImageOrder();
+  }
+
+  const financeForm = document.querySelector('[data-finance-purchase]');
+  if (financeForm) {
+    const quantity = financeForm.querySelector('[data-finance-quantity]');
+    const unitPrice = financeForm.querySelector('[data-finance-unit-price]');
+    const total = financeForm.querySelector('[data-finance-total]');
+    let totalTouched = false;
+    const number = (input) => Number(String(input?.value || '').replace(',', '.')) || 0;
+    const syncFinanceTotal = () => {
+      if (!total || totalTouched) return;
+      const amount = number(quantity) * number(unitPrice);
+      total.value = amount > 0 ? amount.toFixed(2) : '';
+    };
+    total?.addEventListener('input', () => { totalTouched = true; });
+    quantity?.addEventListener('input', syncFinanceTotal);
+    unitPrice?.addEventListener('input', syncFinanceTotal);
+    syncFinanceTotal();
+  }
+
 })();

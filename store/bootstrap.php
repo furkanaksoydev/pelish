@@ -79,6 +79,28 @@ function store_safe_return(?string $value, string $fallback = 'index.php'): stri
     return $fallback;
 }
 
+/**
+ * Formdaki dönüş alanı kaybolsa bile işlem yapan kullanıcıyı güvenli biçimde
+ * geldiği mağaza sayfasına döndürür. Yalnızca aynı hosttan gelen ve bilinen
+ * PHP sayfası biçimindeki yollar kabul edilir.
+ */
+function store_referer_return(string $fallback = 'index.php'): string
+{
+    $referer = (string) ($_SERVER['HTTP_REFERER'] ?? '');
+    $parts = parse_url($referer);
+    if (!is_array($parts)) {
+        return $fallback;
+    }
+    $host = strtolower((string) ($parts['host'] ?? ''));
+    $currentHost = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+    if ($host === '' || $currentHost === '' || $host !== preg_replace('/:\\d+$/', '', $currentHost)) {
+        return $fallback;
+    }
+    $page = basename((string) ($parts['path'] ?? ''));
+    $query = (string) ($parts['query'] ?? '');
+    return store_safe_return($page . ($query !== '' ? '?' . $query : ''), $fallback);
+}
+
 function store_current_return(string $fallback = 'index.php'): string
 {
     $request = (string) ($_SERVER['REQUEST_URI'] ?? '');
@@ -157,6 +179,41 @@ function store_product_images(PDO $pdo, int $productId): array
         }
     }
     return $images;
+}
+
+/** @return list<string> */
+function store_active_categories(PDO $pdo, bool $discountOnly = false): array
+{
+    $where = ['is_active = 1', "TRIM(category) <> ''"];
+    if ($discountOnly) {
+        // A discount only exists when both prices are present and different.
+        $where[] = 'sale_price > 0 AND list_price > 0 AND sale_price <> list_price';
+    }
+    $statement = $pdo->query('SELECT DISTINCT category FROM pelish_products WHERE ' . implode(' AND ', $where) . ' ORDER BY category ASC');
+    return array_values(array_filter(array_map('trim', $statement->fetchAll(PDO::FETCH_COLUMN))));
+}
+
+/** @param list<int> $productIds @return array<int, list<string>> */
+function store_product_preview_images(PDO $pdo, array $productIds, int $limit = 3): array
+{
+    $productIds = array_values(array_unique(array_filter(array_map('intval', $productIds), static fn (int $id): bool => $id > 0)));
+    if (!$productIds) {
+        return [];
+    }
+    $marks = implode(',', array_fill(0, count($productIds), '?'));
+    $statement = $pdo->prepare("SELECT product_id, image_url FROM pelish_product_images WHERE product_id IN ({$marks}) ORDER BY product_id, is_primary DESC, sort_order ASC, id ASC");
+    $statement->execute($productIds);
+    $result = [];
+    foreach ($statement->fetchAll() as $row) {
+        $productId = (int) $row['product_id'];
+        if (!isset($result[$productId])) {
+            $result[$productId] = [];
+        }
+        if (count($result[$productId]) < $limit && !in_array((string) $row['image_url'], $result[$productId], true)) {
+            $result[$productId][] = (string) $row['image_url'];
+        }
+    }
+    return $result;
 }
 
 function store_cart_id(PDO $pdo, int $customerId): int
@@ -260,6 +317,137 @@ function store_counts(PDO $pdo, ?array $customer = null): array
     return ['cart' => (int) $cart->fetchColumn(), 'favorites' => (int) $favorite->fetchColumn()];
 }
 
+function store_normalize_phone(string $value): string
+{
+    $digits = preg_replace('/\D+/', '', $value) ?? '';
+    if ($digits !== '' && $digits[0] !== '0') {
+        $digits = '0' . $digits;
+    }
+    return substr($digits, 0, 11);
+}
+
+function store_phone_is_valid(string $value): bool
+{
+    return (bool) preg_match('/^0\d{10}$/', store_normalize_phone($value));
+}
+
+function store_format_phone(string $value): string
+{
+    $digits = store_normalize_phone($value);
+    if ($digits === '') {
+        return '0';
+    }
+    $parts = [substr($digits, 0, 4), substr($digits, 4, 3), substr($digits, 7, 2), substr($digits, 9, 2)];
+    return trim(implode(' ', array_filter($parts, static fn(string $part): bool => $part !== '')));
+}
+
+function store_customer_addresses(PDO $pdo, int $customerId): array
+{
+    $statement = $pdo->prepare('SELECT * FROM pelish_customer_addresses WHERE customer_id = ? ORDER BY is_default DESC, updated_at DESC, id DESC');
+    $statement->execute([$customerId]);
+    return $statement->fetchAll();
+}
+
+function store_address_from_post(array $source, array $customer): array
+{
+    $data = [
+        'title' => trim((string) ($source['title'] ?? '')),
+        'recipient_name' => trim((string) ($source['recipient_name'] ?? '')),
+        'phone' => store_normalize_phone((string) ($source['phone'] ?? '')),
+        'city' => trim((string) ($source['city'] ?? '')),
+        'district' => trim((string) ($source['district'] ?? '')),
+        'neighborhood' => trim((string) ($source['neighborhood'] ?? '')),
+        'address_line' => trim((string) ($source['address_line'] ?? '')),
+        'postal_code' => preg_replace('/\D+/', '', (string) ($source['postal_code'] ?? '')) ?? '',
+        'is_default' => isset($source['is_default']) ? 1 : 0,
+    ];
+    if ($data['recipient_name'] === '') {
+        $data['recipient_name'] = trim((string) ($customer['first_name'] ?? '') . ' ' . (string) ($customer['last_name'] ?? ''));
+    }
+    if ($data['title'] === '' || $data['recipient_name'] === '' || !store_phone_is_valid($data['phone']) || $data['city'] === '' || $data['district'] === '' || $data['address_line'] === '') {
+        throw new RuntimeException('Adres başlığı, alıcı, geçerli telefon, il, ilçe ve açık adres zorunludur.');
+    }
+    return $data;
+}
+
+function store_save_customer_address(PDO $pdo, int $customerId, array $data, int $addressId = 0): int
+{
+    $pdo->beginTransaction();
+    try {
+        if ($data['is_default']) {
+            $pdo->prepare('UPDATE pelish_customer_addresses SET is_default = 0 WHERE customer_id = ?')->execute([$customerId]);
+        } elseif ($addressId === 0) {
+            $count = $pdo->prepare('SELECT COUNT(*) FROM pelish_customer_addresses WHERE customer_id = ?');
+            $count->execute([$customerId]);
+            if ((int) $count->fetchColumn() === 0) {
+                $data['is_default'] = 1;
+            }
+        }
+        if ($addressId > 0) {
+            $owned = $pdo->prepare('SELECT id FROM pelish_customer_addresses WHERE id = ? AND customer_id = ? FOR UPDATE');
+            $owned->execute([$addressId, $customerId]);
+            if (!$owned->fetchColumn()) {
+                throw new RuntimeException('Düzenlemek istediğin adres bulunamadı.');
+            }
+            $update = $pdo->prepare('UPDATE pelish_customer_addresses SET title=:title, recipient_name=:recipient_name, phone=:phone, city=:city, district=:district, neighborhood=:neighborhood, address_line=:address_line, postal_code=:postal_code, is_default=:is_default WHERE id=:id AND customer_id=:customer_id');
+            $update->execute($data + ['id' => $addressId, 'customer_id' => $customerId]);
+        } else {
+            $insert = $pdo->prepare('INSERT INTO pelish_customer_addresses (customer_id,title,recipient_name,phone,city,district,neighborhood,address_line,postal_code,is_default) VALUES (:customer_id,:title,:recipient_name,:phone,:city,:district,:neighborhood,:address_line,:postal_code,:is_default)');
+            $insert->execute($data + ['customer_id' => $customerId]);
+            $addressId = (int) $pdo->lastInsertId();
+        }
+        $pdo->commit();
+        return $addressId;
+    } catch (Throwable $exception) {
+        if ($pdo->inTransaction()) { $pdo->rollBack(); }
+        throw $exception;
+    }
+}
+
+function store_delete_customer_address(PDO $pdo, int $customerId, int $addressId): void
+{
+    $delete = $pdo->prepare('DELETE FROM pelish_customer_addresses WHERE id = ? AND customer_id = ?');
+    $delete->execute([$addressId, $customerId]);
+    if ($delete->rowCount() === 0) {
+        throw new RuntimeException('Silmek istediğin adres bulunamadı.');
+    }
+    $remaining = $pdo->prepare('SELECT id FROM pelish_customer_addresses WHERE customer_id = ? ORDER BY updated_at DESC, id DESC LIMIT 1');
+    $remaining->execute([$customerId]);
+    if ($nextId = (int) $remaining->fetchColumn()) {
+        $pdo->prepare('UPDATE pelish_customer_addresses SET is_default = 1 WHERE id = ?')->execute([$nextId]);
+    }
+}
+
+function store_cart_items(PDO $pdo, int $customerId): array
+{
+    $itemsQuery = $pdo->prepare('SELECT i.*, p.name, p.category, p.sku, p.sale_price, p.list_price, p.stock, COALESCE(pi.image_url, p.image_url) AS image_url FROM pelish_customer_cart_items i INNER JOIN pelish_customer_carts c ON c.id=i.cart_id INNER JOIN pelish_products p ON p.id=i.product_id LEFT JOIN pelish_product_images pi ON pi.id=i.product_image_id WHERE c.customer_id=? ORDER BY i.created_at DESC');
+    $itemsQuery->execute([$customerId]);
+    return array_map(static function (array $item): array { $item['price'] = store_product_price($item); return $item; }, $itemsQuery->fetchAll());
+}
+
+function store_cart_totals(array $items): array
+{
+    $subtotal = array_reduce($items, static fn(float $sum, array $item): float => $sum + ((float) $item['price']['current'] * (int) $item['quantity']), 0.0);
+    $cargo = $subtotal > 0 && $subtotal < 3500 ? 79.0 : 0.0;
+    return ['subtotal' => $subtotal, 'cargo' => $cargo, 'grand_total' => $subtotal + $cargo];
+}
+
+function store_company(array $config): array
+{
+    $company = (array) ($config['company'] ?? []);
+    return [
+        'legal_name' => trim((string) ($company['legal_name'] ?? 'PELISH')),
+        'address' => trim((string) ($company['address'] ?? 'Şirket açık adresi henüz tanımlanmadı.')),
+        'phone' => trim((string) ($company['phone'] ?? '')),
+        'email' => trim((string) ($company['email'] ?? ($config['mail']['from_email'] ?? ''))),
+        'mersis_no' => trim((string) ($company['mersis_no'] ?? '')),
+        'tax_office' => trim((string) ($company['tax_office'] ?? '')),
+        'tax_no' => trim((string) ($company['tax_no'] ?? '')),
+        'kep_address' => trim((string) ($company['kep_address'] ?? '')),
+        'etbis_qr_url' => trim((string) ($company['etbis_qr_url'] ?? '')),
+    ];
+}
+
 function store_smtp_response($connection): ?int
 {
     $code = null;
@@ -326,7 +514,7 @@ function store_send_verification_email(array $mail, string $to, string $code, st
       <tr><td align="center" style="padding:38px 16px;">
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px;background:#ffffff;">
           <tr><td align="center" style="padding:42px 42px 26px;border-bottom:1px solid #e8e1da;">
-            <img src="https://cdn.pelish.co/logo.png" width="148" alt="pelish" style="display:block;width:148px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;">
+            <img src="https://cdn.pelish.co/pelishlogo.png" width="148" alt="pelish" style="display:block;width:148px;max-width:100%;height:auto;border:0;outline:none;text-decoration:none;">
           </td></tr>
           <tr><td align="center" style="padding:42px 42px 18px;">
             <p style="margin:0 0 14px;color:#897c70;font-size:11px;line-height:16px;letter-spacing:2px;font-weight:700;">HOŞ GELDİN</p>

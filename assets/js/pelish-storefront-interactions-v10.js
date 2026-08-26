@@ -58,11 +58,30 @@
   $("[data-hero-next]")?.addEventListener("click", () => { renderSlide(index + 1); resetTimer(); });
   dots.forEach((dot) => dot.addEventListener("click", () => { renderSlide(Number(dot.dataset.heroDot)); resetTimer(); }));
   if (slides.length) { renderSlide(0); resetTimer(); }
+  slides.forEach((slide) => {
+    $$("video", slide).forEach((video) => video.addEventListener("loadeddata", () => slide.classList.add("is-video-ready"), { once: true }));
+  });
 
   $$(".filters [data-filter]").forEach((button) => button.addEventListener("click", () => {
     $$(".filters [data-filter]").forEach((item) => item.classList.toggle("active", item === button));
     $$(".db-product-card").forEach((card) => card.classList.toggle("hidden", button.dataset.filter !== "all" && card.dataset.category !== button.dataset.filter));
   }));
+
+  $$('[data-product-preview-images]').forEach((card) => {
+    const image = $('[data-product-preview-image]', card);
+    if (!image) return;
+    let images = [];
+    try { images = JSON.parse(card.dataset.productPreviewImages || '[]'); } catch { images = []; }
+    images = images.filter((url, position, list) => typeof url === 'string' && url && list.indexOf(url) === position).slice(0, 3);
+    if (images.length < 2) return;
+    let previewIndex = Math.max(0, images.indexOf(image.getAttribute('src') || ''));
+    window.setInterval(() => {
+      previewIndex = (previewIndex + 1) % images.length;
+      const nextImage = new Image();
+      nextImage.onload = () => { image.src = images[previewIndex]; };
+      nextImage.src = images[previewIndex];
+    }, 4000);
+  });
 
   const thumbs = $$("[data-gallery-image]");
   const mainImage = $("#detailMainImage");
@@ -74,7 +93,7 @@
     mainImage.alt = button.dataset.imageAlt || "Ürün görseli";
     if (selectedImage) selectedImage.value = button.dataset.imageId || "0";
     thumbs.forEach((item) => item.classList.toggle("active", item.dataset.imageId === button.dataset.imageId));
-    $$("[data-color-select]").forEach((item) => item.classList.toggle("active", item.dataset.imageId === button.dataset.imageId));
+    $$("[data-color-select]").forEach((item) => item.classList.toggle("active", item.dataset.colorKey === button.dataset.colorKey));
     if (colorName) colorName.textContent = button.dataset.colorName || "Varsayılan renk";
   };
   thumbs.forEach((button) => button.addEventListener("click", () => setImage(button)));
@@ -145,75 +164,199 @@
     window.setTimeout(() => flash.remove(), 3600);
   };
 
-  const favoriteForms = () => $$('form[action$="store/action.php"]').filter((form) => {
-    const action = form.querySelector('input[name="action"]')?.value;
-    return action === "favorite" || action === "favorite-remove";
-  });
+  // FAVORİ MODÜLÜ
+  // Formda `name="action"` alanı bulunduğu için `form.action` DOM özelliği
+  // güvenilir değildir: alan, formun action URL'sini gölgeler. Bu modül
+  // endpoint'i yalnızca HTML özniteliğinden alır ve hiçbir hata yolunda
+  // sayfayı yenilemez ya da ana sayfaya göndermez.
+  const favoriteForms = () => $$('form[data-favorite-form]');
+  const favoriteEndpoint = (form) => new URL(
+    form.getAttribute("action") || "store/action.php",
+    window.location.href,
+  ).href;
+  const favoriteAction = (form) => form.querySelector('input[name="action"]')?.value || "";
+  const isFavoriteForm = (form) => ["favorite", "favorite-remove"].includes(favoriteAction(form));
+
   const syncFavoriteState = (productId, isFavorite, count) => {
-    favoriteForms().filter((form) => form.querySelector('input[name="product_id"]')?.value === String(productId)).forEach((form) => {
-      const action = form.querySelector('input[name="action"]');
-      const button = $("button", form);
-      if (!action || !button) return;
-      action.value = "favorite";
-      button.classList.toggle("liked", isFavorite);
-      button.setAttribute("aria-label", isFavorite ? "Favoriden çıkar" : "Favoriye ekle");
-      if (button.classList.contains("favorite-outline")) {
-        button.innerHTML = `<i class="${isFavorite ? "fa-solid" : "fa-regular"} fa-heart"></i> ${isFavorite ? "Favoriden çıkar" : "Favorile"}`;
-      } else {
-        const icon = $("span", button);
-        if (icon) icon.textContent = isFavorite ? "♥" : "♡";
-      }
-      if (!isFavorite && form.closest(".favorite-product-grid")) {
-        form.closest(".product-card")?.remove();
-      }
-    });
+    favoriteForms()
+      .filter((form) => form.querySelector('input[name="product_id"]')?.value === String(productId))
+      .forEach((form) => {
+        const actionInput = form.querySelector('input[name="action"]');
+        const button = $("button", form);
+        if (!actionInput || !button) return;
+
+        actionInput.value = "favorite";
+        button.classList.toggle("liked", isFavorite);
+        button.setAttribute("aria-label", isFavorite ? "Favoriden çıkar" : "Favoriye ekle");
+
+        if (button.classList.contains("favorite-outline")) {
+          button.innerHTML = `<i class="${isFavorite ? "fa-solid" : "fa-regular"} fa-heart"></i> ${isFavorite ? "Favoriden çıkar" : "Favorile"}`;
+        } else {
+          const icon = $("span", button);
+          if (icon) icon.textContent = isFavorite ? "♥" : "♡";
+        }
+
+        if (!isFavorite && form.closest(".favorite-product-grid")) {
+          form.closest(".product-card")?.remove();
+        }
+      });
+
     const favoriteLink = $('.header-action[aria-label="Favorilerim"]');
     if (favoriteLink) {
       let badge = $("small", favoriteLink);
-      if (count > 0 && !badge) { badge = document.createElement("small"); favoriteLink.append(badge); }
-      if (badge) { badge.textContent = String(count); if (count < 1) badge.remove(); }
+      if (count > 0 && !badge) {
+        badge = document.createElement("small");
+        favoriteLink.append(badge);
+      }
+      if (badge) {
+        badge.textContent = String(count);
+        if (count < 1) badge.remove();
+      }
     }
+
     const grid = $(".favorite-product-grid");
     if (grid && !$(".product-card", grid)) {
       grid.innerHTML = '<div class="favorite-empty-inline"><strong>Favori listen güncellendi.</strong><span>Beğendiğin yeni parçalar burada yer alacak.</span><a href="indirimler.php">İndirimleri keşfet →</a></div>';
     }
   };
+
   document.addEventListener("submit", async (event) => {
     const form = event.target instanceof HTMLFormElement ? event.target : null;
-    if (!form || !favoriteForms().includes(form)) return;
+    if (!form || !form.matches("form[data-favorite-form]") || !isFavoriteForm(form)) return;
+
     event.preventDefault();
-    const button = $("button", form);
+    const button = $("button[type=submit]", form);
     if (button?.disabled) return;
     if (button) button.disabled = true;
+
     try {
       const formData = new FormData(form);
       formData.set("_response", "json");
-      const response = await fetch(form.action, {
+      const response = await fetch(favoriteEndpoint(form), {
         method: "POST",
         body: formData,
-        headers: { "X-Requested-With": "XMLHttpRequest", Accept: "application/json" },
         credentials: "same-origin",
+        cache: "no-store",
+        headers: {
+          "X-Requested-With": "XMLHttpRequest",
+          Accept: "application/json",
+        },
       });
-      const responseBody = await response.text();
+      const body = await response.text();
       let result;
       try {
-        result = JSON.parse(responseBody);
+        result = JSON.parse(body);
       } catch {
-        const responsePath = new URL(response.url, window.location.href).pathname;
-        if (response.redirected && /\/giris\.php$/i.test(responsePath)) { window.location.assign(response.url); return; }
-        throw new Error("Sunucu favori işlemi için geçerli bir yanıt vermedi. Lütfen sayfayı yenileyip tekrar dene.");
+        const responseUrl = new URL(response.url || window.location.href, window.location.href);
+        if (response.redirected && /\/giris\.php$/i.test(responseUrl.pathname)) {
+          window.location.assign(responseUrl.href);
+          return;
+        }
+        throw new Error("Favori işlemi için sunucudan JSON yanıtı alınamadı. Sayfan bulunduğun yerde kaldı; lütfen tekrar dene.");
       }
-      if (result.requires_auth && result.redirect) { window.location.assign(result.redirect); return; }
-      if (!response.ok || !result.ok) throw new Error(result.message || "Favori işlemi tamamlanamadı.");
+
+      if (result.requires_auth && result.redirect) {
+        window.location.assign(result.redirect);
+        return;
+      }
+      if (!response.ok || !result.ok) {
+        throw new Error(result.message || "Favori işlemi tamamlanamadı.");
+      }
+
       const productId = form.querySelector('input[name="product_id"]')?.value;
-      if (productId) syncFavoriteState(productId, Boolean(result.is_favorite), Number(result.favorite_count || 0));
-      showStoreFlash(result.message);
+      if (!productId) throw new Error("Ürün bilgisi bulunamadı.");
+      syncFavoriteState(productId, Boolean(result.is_favorite), Number(result.favorite_count || 0));
+      showStoreFlash(result.message || (result.is_favorite ? "Favorilerine eklendi." : "Favorilerinden çıkarıldı."));
     } catch (error) {
       showStoreFlash(error instanceof Error ? error.message : "Favori işlemi tamamlanamadı.", "danger");
     } finally {
       if (button?.isConnected) button.disabled = false;
     }
   });
+
+  const formatPhone = (raw) => {
+    let digits = String(raw || "").replace(/\D/g, "");
+    if (!digits.startsWith("0")) digits = `0${digits}`;
+    digits = digits.slice(0, 11);
+    return [digits.slice(0, 4), digits.slice(4, 7), digits.slice(7, 9), digits.slice(9, 11)].filter(Boolean).join(" ");
+  };
+  const installPhoneMask = (input) => {
+    if (input.dataset.phoneMaskReady === "true") return;
+    input.dataset.phoneMaskReady = "true";
+    input.type = "tel";
+    input.inputMode = "numeric";
+    const form = input.closest("form");
+    let hidden = form?.querySelector('input[type="hidden"][data-phone-clean]');
+    if (!hidden && form) {
+      hidden = document.createElement("input");
+      hidden.type = "hidden";
+      hidden.name = input.name || "phone";
+      hidden.dataset.phoneClean = "";
+      input.removeAttribute("name");
+      form.append(hidden);
+    }
+    const sync = () => {
+      const formatted = formatPhone(input.value);
+      input.value = formatted;
+      if (hidden) hidden.value = formatted.replace(/\D/g, "");
+    };
+    input.addEventListener("beforeinput", (event) => {
+      if (event.inputType.startsWith("insert") && event.data && /\D/.test(event.data)) event.preventDefault();
+    });
+    input.addEventListener("input", sync);
+    input.addEventListener("paste", () => window.setTimeout(sync, 0));
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Backspace" && input.value.replace(/\D/g, "").length <= 1) { event.preventDefault(); input.value = "0"; sync(); }
+    });
+    sync();
+  };
+  $$('input[data-phone-mask], input[name="phone"]').forEach(installPhoneMask);
+
+  const registrationForm = $$("form").find((form) => form.querySelector('input[name="mode"][value="register"]'));
+  if (registrationForm && !$("[data-registration-consents]", registrationForm)) {
+    const consentBlock = document.createElement("div");
+    consentBlock.className = "registration-consents";
+    consentBlock.dataset.registrationConsents = "";
+    consentBlock.innerHTML = '<label class="consent-line"><input type="checkbox" required name="kvkk_accepted"><span><a href="yasal.php?belge=kvkk" target="_blank" rel="noopener">KVKK Aydınlatma Metni</a>’ni okudum.</span></label><label class="consent-line optional"><input type="checkbox" name="marketing_consent"><span>Kampanya ve yeni sezon duyuruları için ticari elektronik ileti almak istiyorum. İznimi dilediğim zaman geri alabilirim.</span></label>';
+    registrationForm.querySelector("button[type=submit]")?.before(consentBlock);
+  }
+
+  const cardNumber = $("[data-card-number]");
+  cardNumber?.addEventListener("input", () => { cardNumber.value = cardNumber.value.replace(/\D/g, "").slice(0, 16).replace(/(.{4})/g, "$1 ").trim(); });
+  const cardExpiry = $("[data-card-expiry]");
+  cardExpiry?.addEventListener("input", () => { const digits = cardExpiry.value.replace(/\D/g, "").slice(0, 4); cardExpiry.value = digits.length > 2 ? `${digits.slice(0, 2)}/${digits.slice(2)}` : digits; });
+  const cardCvv = $("[data-card-cvv]");
+  cardCvv?.addEventListener("input", () => { cardCvv.value = cardCvv.value.replace(/\D/g, "").slice(0, 4); });
+  const cardName = $("[data-card-name]");
+  cardName?.addEventListener("input", () => { cardName.value = cardName.value.replace(/[^a-zA-ZçÇğĞıİöÖşŞüÜ\s]/g, "").replace(/\s{2,}/g, " "); });
+  const cardFields = $("[data-card-fields]");
+  const codNote = $("[data-cod-note]");
+  $$('[data-payment-method]').forEach((input) => input.addEventListener("change", () => {
+    const cardSelected = input.value === "card" && input.checked;
+    if (cardFields) cardFields.hidden = !cardSelected;
+    if (codNote) codNote.hidden = cardSelected;
+  }));
+
+  $(".cart-summary [data-store-toast]")?.addEventListener("click", (event) => { event.preventDefault(); window.location.assign("odeme.php"); });
+  $$("[data-confirm]").forEach((button) => button.addEventListener("click", (event) => { if (!window.confirm(button.dataset.confirm || "Bu işlem uygulansın mı?")) event.preventDefault(); }));
+  const profileAside = $(".profile-shell aside");
+  if (profileAside && !$("[data-addresses-link]", profileAside)) {
+    const addressLink = document.createElement("a");
+    addressLink.href = "adresler.php";
+    addressLink.dataset.addressesLink = "";
+    addressLink.innerHTML = '<i class="fa-solid fa-location-dot"></i> Adreslerim';
+    profileAside.querySelector('a[href="cikis.php"]')?.before(addressLink);
+  }
+
+  if (!localStorage.getItem("pelish_cookie_consent_v1")) {
+    const banner = document.createElement("section");
+    banner.className = "cookie-banner";
+    banner.setAttribute("role", "dialog");
+    banner.setAttribute("aria-label", "Çerez tercihleri");
+    banner.innerHTML = '<div><p class="eyebrow">ÇEREZ TERCİHLERİ</p><strong>Tercihlerin sana ait.</strong><span>Zorunlu çerezler mağazanın çalışması için kullanılır. Analiz ve pazarlama çerezleri yalnızca açık seçiminle çalışır. <a href="yasal.php?belge=gizlilik-cerez">Çerez politikası</a></span></div><div class="cookie-actions"><button type="button" data-cookie-choice="necessary">Sadece gerekli</button><button type="button" data-cookie-choice="all">Tümünü kabul et</button></div>';
+    banner.querySelectorAll("[data-cookie-choice]").forEach((button) => button.addEventListener("click", () => { localStorage.setItem("pelish_cookie_consent_v1", button.dataset.cookieChoice || "necessary"); banner.remove(); }));
+    document.body.append(banner);
+  }
 
   document.addEventListener("keydown", (event) => { if (event.key === "Escape") { setMenu(false); search?.classList.remove("open"); lightbox?.classList.remove("open"); } });
 })();
