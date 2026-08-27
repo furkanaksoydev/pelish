@@ -37,6 +37,7 @@ function panel_page_meta(string $page): array
         'storefront' => ['Ana Sayfa Vitrini', 'panel-dashboard'],
         'products' => ['Ürün Yönetimi', 'panel-products'],
         'orders' => ['Siparişler', 'panel-orders'],
+        'payment-reviews' => ['Havale / EFT Dekontları', 'panel-orders'],
         'marketplaces' => ['Pazaryeri Mağazaları', 'panel-marketplaces'],
         'vouchers' => ['Hediye Çekleri', 'panel-vouchers'],
         'customers' => ['Müşteriler', 'panel-customers'],
@@ -49,6 +50,8 @@ function panel_page_meta(string $page): array
 function panel_header(string $page, string $subTitle = '', array $subLinks = []): void
 {
     [$pageTitle, $activeClass] = panel_page_meta($page);
+    $pendingProofs = 0;
+    try { $pendingProofs = (int) $GLOBALS['pdo']->query('SELECT COUNT(*) FROM pelish_orders WHERE payment_method="Havale / EFT" AND payment_proof_uploaded_at IS NOT NULL AND payment_reviewed_at IS NULL')->fetchColumn(); } catch (Throwable $ignored) {}
     $nav = [
         'dashboard' => ['Ana Sayfa', 'fa-house'],
         'storefront' => ['Vitrin', 'fa-window-maximize'],
@@ -73,7 +76,7 @@ function panel_header(string $page, string $subTitle = '', array $subLinks = [])
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono&family=DM+Sans:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-    <link rel="stylesheet" href="assets/pelish-admin-product-v11.css">
+    <link rel="stylesheet" href="assets/pelish-admin-product-v12.css">
   </head>
   <body>
     <div class="page-loader" id="pageLoader"><span></span><small>Yükleniyor…</small></div>
@@ -100,6 +103,7 @@ function panel_header(string $page, string $subTitle = '', array $subLinks = [])
     </nav></div></section>
     <main class="shell panel-content <?= e($activeClass) ?>">
       <?php if ($flash = admin_take_flash()): ?><div class="flash flash-<?= e($flash['type']) ?>"><i class="fa-solid fa-circle-check"></i><?= e($flash['text']) ?><button type="button" aria-label="Kapat">×</button></div><?php endif; ?>
+      <?php if ($pendingProofs > 0 && $page !== 'payment-reviews'): ?><aside class="payment-proof-alert" role="dialog" aria-label="Dekont inceleme uyarısı"><i class="fa-solid fa-receipt"></i><div><span>ÖDEME ONAYI BEKLİYOR</span><strong><?= $pendingProofs ?> Havale / EFT dekontu inceleme bekliyor.</strong><small>Ödemeyi kontrol edip siparişi onaylayabilir veya reddedebilirsin.</small></div><a class="button primary" href="<?= admin_url('payment-reviews') ?>">İncele</a></aside><?php endif; ?>
     <?php
 }
 

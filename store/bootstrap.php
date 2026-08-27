@@ -682,3 +682,34 @@ HTML;
     fclose($connection);
     return $sent;
 }
+
+function store_send_transfer_proof_notification(array $mail, string $recipient, string $orderNumber, float $total, string $proofUrl): bool
+{
+    $from = trim((string) ($mail['from_email'] ?? ''));
+    $host = trim((string) ($mail['smtp_host'] ?? ''));
+    $username = trim((string) ($mail['smtp_username'] ?? $from));
+    $password = (string) ($mail['smtp_password'] ?? '');
+    $port = max(1, min(65535, (int) ($mail['smtp_port'] ?? 587)));
+    if (!filter_var($from, FILTER_VALIDATE_EMAIL) || !filter_var($recipient, FILTER_VALIDATE_EMAIL) || $host === '' || $username === '' || $password === '') return false;
+    $context = stream_context_create(['ssl' => ['verify_peer' => true, 'verify_peer_name' => true, 'peer_name' => $host]]);
+    $connection = @stream_socket_client('tcp://' . $host . ':' . $port, $errorNo, $errorMessage, 15, STREAM_CLIENT_CONNECT, $context);
+    if (!is_resource($connection)) return false;
+    stream_set_timeout($connection, 15);
+    $sent = store_smtp_response($connection) === 220 && store_smtp_command($connection, 'EHLO localhost', [250]);
+    if ($sent && strtolower((string) ($mail['smtp_encryption'] ?? 'tls')) === 'tls') $sent = store_smtp_command($connection, 'STARTTLS', [220]) && stream_socket_enable_crypto($connection, true, STREAM_CRYPTO_METHOD_TLS_CLIENT) === true && store_smtp_command($connection, 'EHLO localhost', [250]);
+    if ($sent) $sent = store_smtp_command($connection, 'AUTH LOGIN', [334]) && store_smtp_command($connection, base64_encode($username), [334]) && store_smtp_command($connection, base64_encode($password), [235]) && store_smtp_command($connection, 'MAIL FROM:<' . $from . '>', [250]) && store_smtp_command($connection, 'RCPT TO:<' . $recipient . '>', [250,251]) && store_smtp_command($connection, 'DATA', [354]);
+    if ($sent) {
+        $subject = 'Pelish · Havale/EFT dekont incelemesi gerekiyor';
+        $totalText = number_format($total, 2, ',', '.') . ' TL';
+        $body = "Yeni Havale / EFT dekontu yüklendi.\n\nSipariş: {$orderNumber}\nTutar: {$totalText}\nDekont: {$proofUrl}\n\nYönetim panelinden dekontu inceleyip ödeme onayı veya reddi verin.";
+        $headers = 'Date: ' . date(DATE_RFC2822) . "\r\nFrom: pelish <{$from}>\r\nTo: <{$recipient}>\r\nSubject: =?UTF-8?B?" . base64_encode($subject) . '?=' . "\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8";
+        $sent = fwrite($connection, $headers . "\r\n\r\n" . str_replace("\n", "\r\n", $body) . "\r\n.\r\n") !== false && store_smtp_response($connection) === 250;
+    }
+    @store_smtp_command($connection, 'QUIT', [221]); fclose($connection); return $sent;
+}
+
+function store_attach_payment_proof(PDO $pdo, int $orderId, array $proof): void
+{
+    $statement = $pdo->prepare('UPDATE pelish_orders SET payment_status="Bekliyor", payment_proof_url=?, payment_proof_key=?, payment_proof_mime=?, payment_proof_name=?, payment_proof_uploaded_at=NOW() WHERE id=?');
+    $statement->execute([$proof['url'], $proof['key'], $proof['mime'], $proof['original_name'], $orderId]);
+}

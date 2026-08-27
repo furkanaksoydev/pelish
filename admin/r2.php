@@ -138,6 +138,33 @@ function r2_upload_image(array $settings, array $file, string $productName): arr
     return ['key' => $key, 'url' => $settings['public_base_url'] . '/' . r2_encode_key($key), 'mime' => $mime];
 }
 
+/** Upload a transfer receipt without treating it as a product image. */
+function r2_upload_payment_proof(array $settings, array $file, string $orderNumber): array
+{
+    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+        throw new RuntimeException('Havale / EFT ile ödeme için dekont yüklemelisin.');
+    }
+    if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK || !is_uploaded_file((string) ($file['tmp_name'] ?? ''))) {
+        throw new RuntimeException('Dekont dosyası yüklenirken hata oluştu.');
+    }
+    if ((int) ($file['size'] ?? 0) > 10 * 1024 * 1024) {
+        throw new RuntimeException('Dekont dosyası en fazla 10 MB olabilir.');
+    }
+    $mime = (new finfo(FILEINFO_MIME_TYPE))->file((string) $file['tmp_name']);
+    $extensions = ['application/pdf' => 'pdf', 'image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp'];
+    if (!isset($extensions[$mime])) {
+        throw new RuntimeException('Dekont olarak yalnızca PDF, JPG, PNG veya WebP yükleyebilirsin.');
+    }
+    if (str_starts_with($mime, 'image/') && @getimagesize((string) $file['tmp_name']) === false) {
+        throw new RuntimeException('Yüklenen dekont görseli geçerli değil.');
+    }
+    $body = file_get_contents((string) $file['tmp_name']);
+    if ($body === false) { throw new RuntimeException('Dekont dosyası okunamadı.'); }
+    $key = 'payment-proofs/' . gmdate('Y/m') . '/' . r2_object_slug($orderNumber) . '-' . bin2hex(random_bytes(10)) . '.' . $extensions[$mime];
+    r2_request($settings, 'PUT', $key, $body, $mime);
+    return ['key' => $key, 'url' => $settings['public_base_url'] . '/' . r2_encode_key($key), 'mime' => $mime, 'original_name' => substr(basename((string) ($file['name'] ?? 'dekont')), 0, 190)];
+}
+
 function r2_delete_object(array $settings, ?string $key): void
 {
     if ($key === null || $key === '' || !r2_is_configured($settings)) {

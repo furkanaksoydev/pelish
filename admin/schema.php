@@ -84,6 +84,19 @@ function pelish_run_migrations(PDO $pdo): void
         try { $pdo->exec('ALTER TABLE pelish_customer_cart_items ADD UNIQUE KEY unique_cart_variant_line (cart_id, product_id, product_image_id, color_id, selected_size)'); } catch (Throwable $ignored) {}
         pelish_mark_migration($pdo, $version);
     }
+
+    $version = 'transfer-payment-proofs-v1';
+    if (!pelish_migration_applied($pdo, $version)) {
+        pelish_add_column($pdo, 'pelish_orders', 'payment_proof_url', 'VARCHAR(500) NULL AFTER payment_reference');
+        pelish_add_column($pdo, 'pelish_orders', 'payment_proof_key', 'VARCHAR(500) NULL AFTER payment_proof_url');
+        pelish_add_column($pdo, 'pelish_orders', 'payment_proof_mime', 'VARCHAR(100) NULL AFTER payment_proof_key');
+        pelish_add_column($pdo, 'pelish_orders', 'payment_proof_name', 'VARCHAR(190) NULL AFTER payment_proof_mime');
+        pelish_add_column($pdo, 'pelish_orders', 'payment_proof_uploaded_at', 'DATETIME NULL AFTER payment_proof_name');
+        pelish_add_column($pdo, 'pelish_orders', 'payment_reviewed_at', 'DATETIME NULL AFTER payment_proof_uploaded_at');
+        pelish_add_column($pdo, 'pelish_orders', 'payment_reviewed_by', 'INT UNSIGNED NULL AFTER payment_reviewed_at');
+        pelish_add_column($pdo, 'pelish_orders', 'payment_review_note', 'TEXT NULL AFTER payment_reviewed_by');
+        pelish_mark_migration($pdo, $version);
+    }
 }
 
 function pelish_migration_applied(PDO $pdo, string $version): bool

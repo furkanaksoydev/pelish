@@ -354,13 +354,6 @@
   cardCvv?.addEventListener("input", () => { cardCvv.value = cardCvv.value.replace(/\D/g, "").slice(0, 4); });
   const cardName = $("[data-card-name]");
   cardName?.addEventListener("input", () => { cardName.value = cardName.value.replace(/[^a-zA-ZçÇğĞıİöÖşŞüÜ\s]/g, "").replace(/\s{2,}/g, " "); });
-  const cardFields = $("[data-card-fields]");
-  const transferNote = $("[data-transfer-note]");
-  $$('[data-payment-method]').forEach((input) => input.addEventListener("change", () => {
-    const cardSelected = input.value === "card" && input.checked;
-    if (cardFields) cardFields.hidden = !cardSelected;
-    if (transferNote) transferNote.hidden = cardSelected;
-  }));
 
   $(".cart-summary [data-store-toast]")?.addEventListener("click", (event) => { event.preventDefault(); window.location.assign("odeme.php"); });
   $$("[data-confirm]").forEach((button) => button.addEventListener("click", (event) => { if (!window.confirm(button.dataset.confirm || "Bu işlem uygulansın mı?")) event.preventDefault(); }));

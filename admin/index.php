@@ -65,6 +65,15 @@ function modal(string $page, string $label, string $title, string $content): voi
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     verify_csrf(); $action = (string) ($_POST['action'] ?? '');
     if (admin_finance_handle_action($pdo, $action)) { exit; }
+    if ($action === 'review-payment-proof') {
+        $id = (int) ($_POST['id'] ?? 0); $decision = (string) ($_POST['decision'] ?? '');
+        if (!in_array($decision, ['approve', 'reject'], true)) { admin_flash('danger', 'Geçersiz ödeme inceleme işlemi.'); admin_redirect('payment-reviews'); }
+        $status = $decision === 'approve' ? 'Yeni' : 'İptal'; $paymentStatus = $decision === 'approve' ? 'Ödendi' : 'Başarısız';
+        $statement = $pdo->prepare('UPDATE pelish_orders SET status=?, payment_status=?, payment_reviewed_at=NOW(), payment_reviewed_by=?, payment_review_note=? WHERE id=? AND payment_proof_uploaded_at IS NOT NULL AND payment_reviewed_at IS NULL');
+        $statement->execute([$status, $paymentStatus, (int) ($_SESSION['pelish_admin_id'] ?? 0), form_value('review_note') ?: null, $id]);
+        admin_flash($statement->rowCount() ? 'success' : 'danger', $statement->rowCount() ? ($decision === 'approve' ? 'Dekont onaylandı; sipariş işleme alındı.' : 'Dekont reddedildi; sipariş iptal edildi.') : 'Bu dekont daha önce incelenmiş veya bulunamadı.');
+        admin_redirect('payment-reviews');
+    }
     if ($action === 'save-home-collection-slots') { admin_save_home_collection_slots($pdo); }
     if ($action === 'save-product') {
         $id=(int)($_POST['id']??0); $existingImage = null;
@@ -178,5 +187,6 @@ function reports(PDO $pdo): void {
 }
 
 require __DIR__ . '/customer-intent.php';
+require __DIR__ . '/payment-reviews.php';
 
-match($page){'storefront'=>admin_render_storefront_content($pdo),'products'=>products($pdo,$r2Settings),'orders'=>orders($pdo),'marketplaces'=>marketplaces($pdo),'vouchers'=>vouchers($pdo),'customers'=>customers($pdo),'catalog'=>catalog($pdo),'reports'=>reports($pdo),'finance'=>admin_render_finance($pdo),default=>dashboard($pdo)};
+match($page){'storefront'=>admin_render_storefront_content($pdo),'products'=>products($pdo,$r2Settings),'orders'=>orders($pdo),'payment-reviews'=>admin_render_payment_reviews($pdo),'marketplaces'=>marketplaces($pdo),'vouchers'=>vouchers($pdo),'customers'=>customers($pdo),'catalog'=>catalog($pdo),'reports'=>reports($pdo),'finance'=>admin_render_finance($pdo),default=>dashboard($pdo)};
