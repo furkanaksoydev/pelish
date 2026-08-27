@@ -51,7 +51,7 @@ function store_checkout_document_html(string $type, array $company, array $custo
     ];
 }
 
-function store_create_cod_order(PDO $pdo, array $customer, int $addressId, bool $termsAccepted, bool $kvkkAccepted, bool $marketingConsent, array $config): array
+function store_create_manual_payment_order(PDO $pdo, array $customer, int $addressId, bool $termsAccepted, bool $kvkkAccepted, bool $marketingConsent, array $config, string $paymentMethod = 'Havale / EFT'): array
 {
     if (!$termsAccepted || !$kvkkAccepted) {
         throw new RuntimeException('Ön bilgilendirme formu, mesafeli satış sözleşmesi ve KVKK aydınlatma metni onaylanmalıdır.');
@@ -79,15 +79,23 @@ function store_create_cod_order(PDO $pdo, array $customer, int $addressId, bool 
         $totals = store_cart_totals($items);
         $number = store_order_number($pdo);
         $shippingAddress = trim($address['address_line'] . "\n" . ($address['neighborhood'] ? $address['neighborhood'] . "\n" : '') . $address['district'] . ' / ' . $address['city'] . ($address['postal_code'] ? "\n" . $address['postal_code'] : ''));
-        $order = $pdo->prepare('INSERT INTO pelish_orders (order_number,customer_id,address_id,recipient_name,recipient_phone,shipping_address,status,payment_method,payment_status,subtotal,cargo_total,grand_total,terms_accepted_at,kvkk_accepted_at,marketing_consent) VALUES (?, ?, ?, ?, ?, ?, "Yeni", "Kapıda Ödeme", "Bekliyor", ?, ?, ?, NOW(), NOW(), ?)');
-        $order->execute([$number, $customer['id'], $address['id'], $address['recipient_name'], $address['phone'], $shippingAddress, $totals['subtotal'], $totals['cargo'], $totals['grand_total'], $marketingConsent ? 1 : 0]);
+        $order = $pdo->prepare('INSERT INTO pelish_orders (order_number,customer_id,address_id,recipient_name,recipient_phone,shipping_address,status,payment_method,payment_status,subtotal,cargo_total,grand_total,terms_accepted_at,kvkk_accepted_at,marketing_consent) VALUES (?, ?, ?, ?, ?, ?, "Yeni", ?, "Bekliyor", ?, ?, ?, NOW(), NOW(), ?)');
+        $order->execute([$number, $customer['id'], $address['id'], $address['recipient_name'], $address['phone'], $shippingAddress, $paymentMethod, $totals['subtotal'], $totals['cargo'], $totals['grand_total'], $marketingConsent ? 1 : 0]);
         $orderId = (int) $pdo->lastInsertId();
         $itemInsert = $pdo->prepare('INSERT INTO pelish_order_items (order_id,product_id,product_name,sku,unit_price,quantity) VALUES (?, ?, ?, ?, ?, ?)');
         $stockUpdate = $pdo->prepare('UPDATE pelish_products SET stock = stock - ? WHERE id = ? AND stock >= ?');
+        $variantStockUpdate = $pdo->prepare('UPDATE pelish_product_color_size_stocks SET stock = stock - ? WHERE product_id = ? AND color_id = ? AND size_code = ? AND stock >= ?');
         foreach ($items as $item) {
             $stockUpdate->execute([(int) $item['quantity'], $item['product_id'], (int) $item['quantity']]);
             if ($stockUpdate->rowCount() !== 1) {
                 throw new RuntimeException($item['name'] . ' stokta kalmadı.');
+            }
+            $variantStockUpdate->execute([(int) $item['quantity'], (int) $item['product_id'], (int) ($item['color_id'] ?? 0), (string) $item['selected_size'], (int) $item['quantity']]);
+            if ($variantStockUpdate->rowCount() !== 1 && (int) ($item['color_id'] ?? 0) > 0) {
+                $variantStockUpdate->execute([(int) $item['quantity'], (int) $item['product_id'], 0, (string) $item['selected_size'], (int) $item['quantity']]);
+            }
+            if ($variantStockUpdate->rowCount() !== 1) {
+                throw new RuntimeException($item['name'] . ' için seçilen renk ve bedende yeterli stok kalmadı.');
             }
             $itemInsert->execute([$orderId, $item['product_id'], $item['name'], $item['sku'], $item['price']['current'], $item['quantity']]);
         }
@@ -108,4 +116,11 @@ function store_create_cod_order(PDO $pdo, array $customer, int $addressId, bool 
         if ($pdo->inTransaction()) { $pdo->rollBack(); }
         throw $exception;
     }
+}
+
+function store_create_guest_transfer_order(PDO $pdo, array $guest, bool $termsAccepted, bool $kvkkAccepted, array $config): array
+{
+    if (!$termsAccepted || !$kvkkAccepted) throw new RuntimeException('Ön bilgilendirme formu, mesafeli satış sözleşmesi ve KVKK aydınlatma metni onaylanmalıdır.');
+    if (trim((string)($guest['first_name']??''))==='' || trim((string)($guest['last_name']??''))==='' || !filter_var((string)($guest['email']??''),FILTER_VALIDATE_EMAIL) || !store_phone_is_valid((string)($guest['phone']??'')) || trim((string)($guest['address_line']??''))==='' || trim((string)($guest['city']??''))==='' || trim((string)($guest['district']??''))==='') throw new RuntimeException('Üyeliksiz sipariş için iletişim ve teslimat bilgilerini eksiksiz doldurmalısın.');
+    $items=store_guest_cart_items($pdo); if(!$items)throw new RuntimeException('Sepetin boş olduğu için sipariş oluşturulamadı.'); $pdo->beginTransaction();try{$totals=store_cart_totals($items);$number=store_order_number($pdo);$address=['address_line'=>$guest['address_line'],'neighborhood'=>'','district'=>$guest['district'],'city'=>$guest['city'],'postal_code'=>''];$shipping=trim($guest['address_line']."\n".$guest['district'].' / '.$guest['city']);$order=$pdo->prepare('INSERT INTO pelish_orders (order_number,customer_id,address_id,recipient_name,recipient_phone,shipping_address,status,payment_method,payment_status,subtotal,cargo_total,grand_total,terms_accepted_at,kvkk_accepted_at,marketing_consent) VALUES (?,NULL,NULL,?,?,?,"Yeni","Havale / EFT","Bekliyor",?,?,?,NOW(),NOW(),0)');$order->execute([$number,trim($guest['first_name'].' '.$guest['last_name']),store_normalize_phone($guest['phone']),$shipping,$totals['subtotal'],$totals['cargo'],$totals['grand_total']]);$orderId=(int)$pdo->lastInsertId();$itemInsert=$pdo->prepare('INSERT INTO pelish_order_items (order_id,product_id,product_name,sku,unit_price,quantity) VALUES (?,?,?,?,?,?)');$stockUpdate=$pdo->prepare('UPDATE pelish_products SET stock=stock-? WHERE id=? AND stock>=?');foreach($items as $item){$stockUpdate->execute([(int)$item['quantity'],$item['product_id'],(int)$item['quantity']]);if($stockUpdate->rowCount()!==1)throw new RuntimeException($item['name'].' stokta kalmadı.');$itemInsert->execute([$orderId,$item['product_id'],$item['name'],$item['sku'],$item['price']['current'],$item['quantity']]);}$company=store_company($config);$docs=$pdo->prepare('INSERT INTO pelish_order_documents (order_id,document_type,document_title,document_version,document_html,document_hash,approved_at) VALUES (?, ?, ?, "2026-08", ?, ?, NOW())');foreach(['pre_information','distance_sales'] as $type){$document=store_checkout_document_html($type,$company,$guest,$address,$items,$totals,$number);$docs->execute([$orderId,$type,$document['title'],$document['html'],hash('sha256',$document['html'])]);}unset($_SESSION['pelish_guest_cart']);$pdo->commit();return['id'=>$orderId,'number'=>$number,'totals'=>$totals];}catch(Throwable $e){if($pdo->inTransaction())$pdo->rollBack();throw $e;}
 }

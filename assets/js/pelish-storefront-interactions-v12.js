@@ -86,7 +86,26 @@
   const thumbs = $$("[data-gallery-image]");
   const mainImage = $("#detailMainImage");
   const selectedImage = $("#selectedImageId");
+  const selectedColor = $("#selectedColorId");
   const colorName = $("#selectedColorName");
+  const sizeArea = $(".detail-sizes");
+  const renderColorSizes = (colorId) => {
+    if (!sizeArea) return;
+    let stockMap = {};
+    try { stockMap = JSON.parse(sizeArea.dataset.colorSizeStocks || "{}"); } catch (_) { return; }
+    const sizes = stockMap[String(colorId)] || stockMap["0"] || [];
+    sizeArea.replaceChildren();
+    sizes.forEach((size) => {
+      const label = document.createElement("label");
+      const unavailable = Number(size.stock) < 1;
+      label.className = unavailable ? "is-sold-out" : "";
+      const input = document.createElement("input"); input.type = "radio"; input.name = "size"; input.value = size.size_code; input.disabled = unavailable;
+      input.addEventListener("change", () => { const labelText = $("#selectedSizeLabel"); if (labelText) labelText.textContent = input.value; });
+      const text = document.createElement("span"); text.textContent = size.size_code;
+      label.append(input, text); sizeArea.append(label);
+    });
+    const labelText = $("#selectedSizeLabel"); if (labelText) labelText.textContent = "Beden seçin";
+  };
   const setImage = (button) => {
     if (!button || !mainImage) return;
     mainImage.src = button.dataset.imageUrl;
@@ -105,6 +124,8 @@
       $$("[data-color-select]").forEach((item) => item.classList.toggle("active", item === button));
       if (colorName) colorName.textContent = button.dataset.colorName || "Varsayılan renk";
     } else { if (selectedImage) selectedImage.value = button.dataset.imageId || "0"; $$("[data-color-select]").forEach((item) => item.classList.toggle("active", item === button)); if (colorName) colorName.textContent = button.dataset.colorName || "Varsayılan renk"; }
+    if (selectedColor) selectedColor.value = button.dataset.colorId || "0";
+    renderColorSizes(button.dataset.colorId || "0");
   }));
   $$(".detail-sizes input").forEach((input) => input.addEventListener("change", () => { const label = $("#selectedSizeLabel"); if (label) label.textContent = input.value; }));
 
@@ -334,11 +355,11 @@
   const cardName = $("[data-card-name]");
   cardName?.addEventListener("input", () => { cardName.value = cardName.value.replace(/[^a-zA-ZçÇğĞıİöÖşŞüÜ\s]/g, "").replace(/\s{2,}/g, " "); });
   const cardFields = $("[data-card-fields]");
-  const codNote = $("[data-cod-note]");
+  const transferNote = $("[data-transfer-note]");
   $$('[data-payment-method]').forEach((input) => input.addEventListener("change", () => {
     const cardSelected = input.value === "card" && input.checked;
     if (cardFields) cardFields.hidden = !cardSelected;
-    if (codNote) codNote.hidden = cardSelected;
+    if (transferNote) transferNote.hidden = cardSelected;
   }));
 
   $(".cart-summary [data-store-toast]")?.addEventListener("click", (event) => { event.preventDefault(); window.location.assign("odeme.php"); });

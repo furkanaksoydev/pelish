@@ -70,6 +70,20 @@ function pelish_run_migrations(PDO $pdo): void
         pelish_install_product_color_and_size_features($pdo);
         pelish_mark_migration($pdo, $version);
     }
+
+    $version = 'product-color-size-stock-and-finance-receipts-v1';
+    if (!pelish_migration_applied($pdo, $version)) {
+        pelish_install_color_size_stock_and_finance_receipts($pdo);
+        pelish_mark_migration($pdo, $version);
+    }
+
+    $version = 'cart-color-variant-stock-v1';
+    if (!pelish_migration_applied($pdo, $version)) {
+        pelish_add_column($pdo, 'pelish_customer_cart_items', 'color_id', 'INT UNSIGNED NULL AFTER product_image_id');
+        try { $pdo->exec('ALTER TABLE pelish_customer_cart_items DROP INDEX unique_cart_line'); } catch (Throwable $ignored) {}
+        try { $pdo->exec('ALTER TABLE pelish_customer_cart_items ADD UNIQUE KEY unique_cart_variant_line (cart_id, product_id, product_image_id, color_id, selected_size)'); } catch (Throwable $ignored) {}
+        pelish_mark_migration($pdo, $version);
+    }
 }
 
 function pelish_migration_applied(PDO $pdo, string $version): bool
@@ -375,4 +389,25 @@ WHERE i.color_name IS NOT NULL AND TRIM(i.color_name) <> '';
 INSERT IGNORE INTO pelish_product_size_stocks (product_id, size_code, stock)
 SELECT id, 'M', stock FROM pelish_products WHERE stock > 0;
 SQL);
+}
+
+function pelish_install_color_size_stock_and_finance_receipts(PDO $pdo): void
+{
+    $pdo->exec(<<<'SQL'
+CREATE TABLE IF NOT EXISTS pelish_product_color_size_stocks (
+    product_id INT UNSIGNED NOT NULL,
+    color_id INT UNSIGNED NOT NULL DEFAULT 0,
+    size_code VARCHAR(10) NOT NULL,
+    stock INT UNSIGNED NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (product_id, color_id, size_code),
+    INDEX idx_product_color_size_stock_color (color_id),
+    CONSTRAINT fk_pelish_product_color_size_stock_product FOREIGN KEY (product_id) REFERENCES pelish_products(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+SQL);
+    // color_id=0 eski, renkten bağımsız stok kaydını temsil eder.
+    $pdo->exec('INSERT IGNORE INTO pelish_product_color_size_stocks (product_id, color_id, size_code, stock) SELECT product_id, 0, size_code, stock FROM pelish_product_size_stocks');
+    pelish_add_column($pdo, 'pelish_finance_purchases', 'receipt_number', 'VARCHAR(50) NULL AFTER id');
+    pelish_add_column($pdo, 'pelish_finance_purchases', 'updated_at', 'TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP AFTER created_at');
 }

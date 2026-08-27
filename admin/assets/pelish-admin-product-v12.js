@@ -173,6 +173,40 @@
     row?.remove();
   });
 
+  // Yeni ürün eklenirken renk kimliği henüz oluşmamış olur. Bu küçük arayüz
+  // rengi kaydetmeden önce bile renk bazlı beden stoklarının girilmesini sağlar.
+  const variantStockGroups = document.querySelector('.variant-stock-groups');
+  let newColorStockIndex = 0;
+  const addNewColorStockGroup = (row) => {
+    const idInput = row?.querySelector('input[name="color_ids[]"]');
+    if (!row || !variantStockGroups || idInput?.value) return;
+    if (!row.dataset.stockIndex) row.dataset.stockIndex = String(newColorStockIndex++);
+    const index = row.dataset.stockIndex;
+    let group = variantStockGroups.querySelector(`[data-new-color-stock="${index}"]`);
+    if (!group) {
+      group = document.createElement('fieldset');
+      group.className = 'size-stock-group';
+      group.dataset.newColorStock = index;
+      group.innerHTML = `<legend><i></i><span>Yeni renk</span></legend><input type="hidden" name="variant_stock_names[${index}]" value=""><div class="size-stock-list">${['Standart', 'XS', 'S', 'M', 'L', 'XL', 'XXL'].map((size) => `<label><span>${size}</span><input type="number" min="0" inputmode="numeric" name="variant_stock_new[${index}][${size}]" placeholder="Stok gir"></label>`).join('')}</div>`;
+      variantStockGroups.append(group);
+    }
+    const colorInput = row.querySelector('input[name="color_names[]"]');
+    const sync = () => {
+      const name = colorInput?.value.trim() || 'Yeni renk';
+      group.querySelector('legend span').textContent = name;
+      group.querySelector('input[type="hidden"]').value = colorInput?.value.trim() || '';
+    };
+    colorInput?.addEventListener('input', sync);
+    sync();
+  };
+  addColorButton?.addEventListener('click', () => setTimeout(() => addNewColorStockGroup(colorList?.lastElementChild), 0));
+  colorList?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-remove-product-color]');
+    const row = button?.closest('.product-color-row');
+    const index = row?.dataset.stockIndex;
+    if (index) variantStockGroups?.querySelector(`[data-new-color-stock="${index}"]`)?.remove();
+  });
+
   const categorySelect = document.querySelector('[data-category-select]');
   const newCategoryField = document.querySelector('[data-new-category-field]');
   const syncCategoryField = () => {
@@ -220,20 +254,24 @@
 
   const financeForm = document.querySelector('[data-finance-purchase]');
   if (financeForm) {
-    const quantity = financeForm.querySelector('[data-finance-quantity]');
-    const unitPrice = financeForm.querySelector('[data-finance-unit-price]');
-    const total = financeForm.querySelector('[data-finance-total]');
-    let totalTouched = false;
     const number = (input) => Number(String(input?.value || '').replace(',', '.')) || 0;
-    const syncFinanceTotal = () => {
-      if (!total || totalTouched) return;
-      const amount = number(quantity) * number(unitPrice);
-      total.value = amount > 0 ? amount.toFixed(2) : '';
+    const connectReceiptLine = (line) => {
+      const quantity = line.querySelector('[data-finance-quantity]');
+      const unitPrice = line.querySelector('[data-finance-unit-price]');
+      const total = line.querySelector('[data-finance-total]');
+      let totalTouched = false;
+      const syncFinanceTotal = () => { if (!total || totalTouched) return; const amount = number(quantity) * number(unitPrice); total.value = amount > 0 ? amount.toFixed(2) : ''; };
+      total?.addEventListener('input', () => { totalTouched = true; });
+      quantity?.addEventListener('input', syncFinanceTotal); unitPrice?.addEventListener('input', syncFinanceTotal); syncFinanceTotal();
     };
-    total?.addEventListener('input', () => { totalTouched = true; });
-    quantity?.addEventListener('input', syncFinanceTotal);
-    unitPrice?.addEventListener('input', syncFinanceTotal);
-    syncFinanceTotal();
+    document.querySelectorAll('.finance-receipt-line').forEach(connectReceiptLine);
+    document.querySelector('[data-add-finance-line]')?.addEventListener('click', () => {
+      const list = document.querySelector('[data-finance-receipt-lines]'); const example = list?.querySelector('.finance-receipt-line'); if (!list || !example) return;
+      const line = example.cloneNode(true); line.querySelectorAll('input').forEach((input) => { input.value = input.name.includes('quantity') ? '1' : ''; }); list.append(line); connectReceiptLine(line);
+    });
+    document.querySelector('[data-finance-receipt-lines]')?.addEventListener('click', (event) => { const button = event.target.closest('[data-remove-finance-line]'); if (!button) return; const lines = document.querySelectorAll('.finance-receipt-line'); if (lines.length > 1) button.closest('.finance-receipt-line')?.remove(); });
   }
+
+  document.querySelector('[data-toggle-supplier-rename]')?.addEventListener('click', () => document.querySelector('[data-supplier-rename]')?.toggleAttribute('hidden'));
 
 })();
