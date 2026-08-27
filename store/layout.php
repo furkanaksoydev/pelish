@@ -21,7 +21,7 @@ function store_render_head(string $title, bool $home = false): void
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <link rel="stylesheet" href="assets/css/pelish-store-shell.css">
     <link rel="stylesheet" href="assets/css/pelish-header-system.css">
-    <link rel="stylesheet" href="assets/css/pelish-storefront-commerce-v12.css">
+    <link rel="stylesheet" href="assets/css/pelish-storefront-commerce-v13.css">
   </head>
   <body class="<?= $home ? 'store-home' : 'store-page' ?>">
     <?php
@@ -62,7 +62,7 @@ function store_render_footer(): void
     $company = store_company(is_array($config ?? null) ? $config : []);
     ?>
     <footer class="store-footer" id="footer"><div><a class="footer-logo" href="index.php"><img src="https://cdn.pelish.co/pelish-tarihli-logo-beyaz.png" alt="pelish"></a><p>Tekirdağ / Süleymanpaşa</p><div class="payment-logo-band" aria-label="iyzico ile Öde, Visa ve Mastercard"><img src="assets/payment/iyzico-visa-mastercard-white.svg" alt="iyzico ile Öde · Visa · Mastercard"></div><?php if ($company['etbis_qr_url'] !== ''): ?><a class="etbis-qr" href="<?= e($company['etbis_qr_url']) ?>" target="_blank" rel="noopener"><img src="<?= e($company['etbis_qr_url']) ?>" alt="ETBİS kayıt karekodu"><span>ETBİS kaydı</span></a><?php endif; ?></div><div><small>PELISH’E YAKIN OL</small><a href="https://instagram.com/pelish.co" target="_blank" rel="noopener"><i class="fa-brands fa-instagram"></i> @pelish.co</a><a href="https://instagram.com/pelishaccessory" target="_blank" rel="noopener"><i class="fa-brands fa-instagram"></i> @pelishaccessory</a><a href="#"><i class="fa-brands fa-tiktok"></i> @pelish.co</a></div><div><small>HIZLI ERİŞİM</small><a href="indirimler.php">İndirim</a><a href="favorilerim.php">Favorilerim</a><a href="sepetim.php">Sepetim</a><a href="adresler.php">Adreslerim</a><a href="iletisim.php">İletişim</a></div><div class="footer-legal"><small>YASAL</small><a href="yasal.php?belge=gizlilik-politikasi">Gizlilik Politikası</a><a href="yasal.php?belge=teslimat-iade">Teslimat ve İade</a><a href="yasal.php?belge=mesafeli-satis">Mesafeli Satış Sözleşmesi</a><a href="yasal.php?belge=kvkk">KVKK Aydınlatma</a></div></footer>
-    <script src="assets/js/pelish-storefront-interactions-v13.js"></script>
+    <script src="assets/js/pelish-storefront-interactions-v14.js"></script>
   </body>
 </html>
     <?php
