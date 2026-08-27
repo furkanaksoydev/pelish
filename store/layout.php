@@ -21,7 +21,7 @@ function store_render_head(string $title, bool $home = false): void
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <link rel="stylesheet" href="assets/css/pelish-store-shell.css">
     <link rel="stylesheet" href="assets/css/pelish-header-system.css">
-    <link rel="stylesheet" href="assets/css/pelish-storefront-commerce-v11.css">
+    <link rel="stylesheet" href="assets/css/pelish-storefront-commerce-v12.css">
   </head>
   <body class="<?= $home ? 'store-home' : 'store-page' ?>">
     <?php
