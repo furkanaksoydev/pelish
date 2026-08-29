@@ -34,6 +34,7 @@ if ($customer) {
     $isFavorite = (bool) $favorite->fetchColumn();
 }
 $price = store_product_price($product);
+$productCategories = store_product_category_names($pdo, (int) $product['id'], (string) $product['category']);
 store_render_head($product['name']);
 store_render_header($pdo);
 ?>
@@ -48,7 +49,7 @@ store_render_header($pdo);
       </div>
     </div>
     <div class="product-detail-copy">
-      <p class="eyebrow"><?= e($product['category']) ?></p>
+      <p class="eyebrow"><?= e(implode(' · ', $productCategories)) ?></p>
       <h1><?= e($product['name']) ?></h1>
       <div class="detail-price"><?php if ($price['is_discounted']): ?><del><?= store_money($price['original']) ?></del><span class="detail-discount">−<?= $price['discount_percent'] ?>%</span><?php endif; ?><strong><?= store_money($price['current']) ?></strong></div>
       <form method="post" action="store/action.php" class="purchase-form">

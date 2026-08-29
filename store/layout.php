@@ -62,7 +62,7 @@ function store_render_footer(): void
     $company = store_company(is_array($config ?? null) ? $config : []);
     ?>
     <footer class="store-footer" id="footer"><div><a class="footer-logo" href="index.php"><img src="https://cdn.pelish.co/pelish-tarihli-logo-beyaz.png" alt="pelish"></a><p>Tekirdağ / Süleymanpaşa</p><div class="payment-logo-band" aria-label="iyzico ile Öde, Visa ve Mastercard"><img src="assets/payment/iyzico-visa-mastercard-white.svg" alt="iyzico ile Öde · Visa · Mastercard"></div><?php if ($company['etbis_qr_url'] !== ''): ?><a class="etbis-qr" href="<?= e($company['etbis_qr_url']) ?>" target="_blank" rel="noopener"><img src="<?= e($company['etbis_qr_url']) ?>" alt="ETBİS kayıt karekodu"><span>ETBİS kaydı</span></a><?php endif; ?></div><div><small>PELISH’E YAKIN OL</small><a href="https://instagram.com/pelish.co" target="_blank" rel="noopener"><i class="fa-brands fa-instagram"></i> @pelish.co</a><a href="https://instagram.com/pelishaccessory" target="_blank" rel="noopener"><i class="fa-brands fa-instagram"></i> @pelishaccessory</a><a href="#"><i class="fa-brands fa-tiktok"></i> @pelish.co</a></div><div><small>HIZLI ERİŞİM</small><a href="indirimler.php">İndirim</a><a href="favorilerim.php">Favorilerim</a><a href="sepetim.php">Sepetim</a><a href="adresler.php">Adreslerim</a><a href="iletisim.php">İletişim</a></div><div class="footer-legal"><small>YASAL</small><a href="yasal.php?belge=gizlilik-politikasi">Gizlilik Politikası</a><a href="yasal.php?belge=teslimat-iade">Teslimat ve İade</a><a href="yasal.php?belge=mesafeli-satis">Mesafeli Satış Sözleşmesi</a><a href="yasal.php?belge=kvkk">KVKK Aydınlatma</a></div></footer>
-    <script src="assets/js/pelish-storefront-interactions-v14.js"></script>
+    <script src="assets/js/pelish-storefront-interactions-v15.js"></script>
   </body>
 </html>
     <?php
@@ -77,11 +77,12 @@ function store_product_card(PDO $pdo, array $product, array $favoriteIds = [], a
     }
     $isFavorite = in_array((int) $product['id'], $favoriteIds, true);
     $price = store_product_price($product);
+    $categoryNames = store_product_category_names($pdo, (int) $product['id'], (string) ($product['category'] ?? 'Genel'));
     ?>
-    <article class="product-card db-product-card" data-category="<?= e($product['category']) ?>" data-product-preview-images="<?= e((string) json_encode(array_slice($previewImages, 0, 3), JSON_UNESCAPED_SLASHES)) ?>">
+    <article class="product-card db-product-card" data-categories="<?= e((string) json_encode($categoryNames, JSON_UNESCAPED_UNICODE)) ?>" data-product-preview-images="<?= e((string) json_encode(array_slice($previewImages, 0, 3), JSON_UNESCAPED_SLASHES)) ?>">
       <a class="product-image" href="urun.php?id=<?= (int) $product['id'] ?>"><img src="<?= e($previewImages[0]) ?>" alt="<?= e($product['name']) ?>" data-product-preview-image><?php if ($price['is_discounted']): ?><mark><span>−<?= $price['discount_percent'] ?>%</span> İndirim</mark><?php endif; ?></a>
       <div class="product-actions"><form method="post" action="store/action.php" data-favorite-form><input type="hidden" name="csrf" value="<?= e(store_csrf()) ?>"><input type="hidden" name="action" value="favorite"><input type="hidden" name="product_id" value="<?= (int) $product['id'] ?>"><input type="hidden" name="return_to" value="<?= e(store_current_return()) ?>"><button class="heart <?= $isFavorite ? 'liked' : '' ?>" type="submit" aria-label="<?= $isFavorite ? 'Favoriden çıkar' : 'Favoriye ekle' ?>"><span><?= $isFavorite ? '♥' : '♡' ?></span></button></form></div>
-      <a class="product-info" href="urun.php?id=<?= (int) $product['id'] ?>"><div><small><?= e($product['category']) ?></small><h3><?= e($product['name']) ?></h3></div><strong><?php if ($price['is_discounted']): ?><del><?= store_money($price['original']) ?></del><?php endif; ?><span><?= store_money($price['current']) ?></span></strong></a>
+      <a class="product-info" href="urun.php?id=<?= (int) $product['id'] ?>"><div><small><?= e(implode(' · ', $categoryNames)) ?></small><h3><?= e($product['name']) ?></h3></div><strong><?php if ($price['is_discounted']): ?><del><?= store_money($price['original']) ?></del><?php endif; ?><span><?= store_money($price['current']) ?></span></strong></a>
     </article>
     <?php
 }

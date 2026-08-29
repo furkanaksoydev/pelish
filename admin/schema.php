@@ -97,6 +97,13 @@ function pelish_run_migrations(PDO $pdo): void
         pelish_add_column($pdo, 'pelish_orders', 'payment_review_note', 'TEXT NULL AFTER payment_reviewed_by');
         pelish_mark_migration($pdo, $version);
     }
+
+    $version = 'product-multiple-categories-v1';
+    if (!pelish_migration_applied($pdo, $version)) {
+        $pdo->exec('CREATE TABLE IF NOT EXISTS pelish_product_categories (product_id INT UNSIGNED NOT NULL, category_name VARCHAR(100) NOT NULL, sort_order SMALLINT UNSIGNED NOT NULL DEFAULT 0, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY (product_id, category_name), INDEX idx_pelish_product_categories_name (category_name), CONSTRAINT fk_pelish_product_categories_product FOREIGN KEY (product_id) REFERENCES pelish_products(id) ON DELETE CASCADE) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci');
+        $pdo->exec('INSERT IGNORE INTO pelish_product_categories (product_id, category_name, sort_order) SELECT id, category, 0 FROM pelish_products WHERE TRIM(category) <> ""');
+        pelish_mark_migration($pdo, $version);
+    }
 }
 
 function pelish_migration_applied(PDO $pdo, string $version): bool

@@ -248,13 +248,22 @@ function store_size_stock(PDO $pdo, int $productId, string $size, int $colorId =
 /** @return list<string> */
 function store_active_categories(PDO $pdo, bool $discountOnly = false): array
 {
-    $where = ['is_active = 1', "TRIM(category) <> ''"];
+    $where = ['p.is_active = 1', "TRIM(pc.category_name) <> ''"];
     if ($discountOnly) {
         // A discount only exists when both prices are present and different.
-        $where[] = 'sale_price > 0 AND list_price > 0 AND sale_price <> list_price';
+        $where[] = 'p.sale_price > 0 AND p.list_price > 0 AND p.sale_price <> p.list_price';
     }
-    $statement = $pdo->query('SELECT DISTINCT category FROM pelish_products WHERE ' . implode(' AND ', $where) . ' ORDER BY category ASC');
+    $statement = $pdo->query('SELECT DISTINCT pc.category_name FROM pelish_products p INNER JOIN pelish_product_categories pc ON pc.product_id = p.id WHERE ' . implode(' AND ', $where) . ' ORDER BY pc.category_name ASC');
     return array_values(array_filter(array_map('trim', $statement->fetchAll(PDO::FETCH_COLUMN))));
+}
+
+/** @return list<string> */
+function store_product_category_names(PDO $pdo, int $productId, string $fallback = 'Genel'): array
+{
+    $statement = $pdo->prepare('SELECT category_name FROM pelish_product_categories WHERE product_id = ? ORDER BY sort_order, category_name');
+    $statement->execute([$productId]);
+    $names = array_values(array_filter(array_map('trim', $statement->fetchAll(PDO::FETCH_COLUMN))));
+    return $names ?: [$fallback];
 }
 
 /** @param list<int> $productIds @return array<int, list<string>> */

@@ -64,7 +64,11 @@
 
   $$(".filters [data-filter]").forEach((button) => button.addEventListener("click", () => {
     $$(".filters [data-filter]").forEach((item) => item.classList.toggle("active", item === button));
-    $$(".db-product-card").forEach((card) => card.classList.toggle("hidden", button.dataset.filter !== "all" && card.dataset.category !== button.dataset.filter));
+    $$(".db-product-card").forEach((card) => {
+      let categories = [];
+      try { categories = JSON.parse(card.dataset.categories || "[]"); } catch (_) { categories = []; }
+      card.classList.toggle("hidden", button.dataset.filter !== "all" && !categories.includes(button.dataset.filter));
+    });
   }));
 
   $$('[data-product-preview-images]').forEach((card) => {

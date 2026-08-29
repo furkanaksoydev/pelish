@@ -134,11 +134,37 @@
 
   const colorList = document.querySelector('[data-product-color-list]');
   const addColorButton = document.querySelector('[data-add-product-color]');
+  if (!document.querySelector('input[name="id"]')?.value) {
+    colorList?.closest('.product-colors-editor')?.remove();
+  }
   const imageChoices = () => [...document.querySelectorAll('.gallery-grid .variant-card')].map((card) => {
     const input = card.querySelector('input[name="primary_image_id"]');
     const label = card.querySelector('strong')?.textContent?.trim() || 'Görsel';
-    return input?.value ? { id: input.value, label } : null;
+    const image = card.querySelector('img')?.src || '';
+    return input?.value ? { id: input.value, label, image } : null;
   }).filter(Boolean);
+  const upgradeColorImagePicker = (row) => {
+    const select = row?.querySelector('select[name="color_image_ids[]"]');
+    if (!select || select.dataset.previewReady === 'true') return;
+    select.dataset.previewReady = 'true';
+    const savedImages = imageChoices();
+    const choices = savedImages.length ? [{ id: '0', label: 'Ana görsel', image: savedImages[0].image }, ...savedImages] : [];
+    const picker = document.createElement('div');
+    const pickerName = `color_image_picker_${row.querySelector('input[name="color_ids[]"]')?.value || Math.random().toString(36).slice(2)}`;
+    picker.className = 'color-image-picker';
+    picker.setAttribute('aria-label', 'Temsil eden görsel seçimi');
+    choices.forEach((choice) => {
+      const label = document.createElement('label');
+      label.innerHTML = `<input type="radio" name="${pickerName}" value="${choice.id}"><img src="${choice.image}" alt="${choice.label}"><span>${choice.label}</span>`;
+      const input = label.querySelector('input');
+      input.checked = select.value === choice.id;
+      input.addEventListener('change', () => { select.value = choice.id; });
+      picker.append(label);
+    });
+    if (!choices.length) picker.textContent = 'Önce ürün görsellerini kaydet.';
+    select.hidden = true;
+    select.closest('label')?.append(picker);
+  };
   const colorRow = (color = {}) => {
     const row = document.createElement('div');
     row.className = 'product-color-row';
@@ -151,8 +177,10 @@
       <button type="button" class="remove-product-color" data-remove-product-color aria-label="Rengi kaldır">×</button>`;
     const select = row.querySelector('select');
     if (select && color.imageId) select.value = String(color.imageId);
+    upgradeColorImagePicker(row);
     return row;
   };
+  colorList?.querySelectorAll('.product-color-row').forEach(upgradeColorImagePicker);
   addColorButton?.addEventListener('click', () => {
     if (!colorList) return;
     colorList.append(colorRow());
@@ -211,10 +239,20 @@
   const newCategoryField = document.querySelector('[data-new-category-field]');
   const syncCategoryField = () => {
     if (!categorySelect || !newCategoryField) return;
-    const show = categorySelect.value === '__new__';
+    const show = [...categorySelect.selectedOptions].some((option) => option.value === '__new__');
     newCategoryField.hidden = !show;
     newCategoryField.querySelector('input')?.toggleAttribute('required', show);
   };
+  if (categorySelect) {
+    categorySelect.multiple = true;
+    categorySelect.name = 'categories[]';
+    categorySelect.size = Math.min(6, Math.max(3, categorySelect.options.length));
+    const productId = document.querySelector('input[name="id"]')?.value;
+    if (productId) fetch(`index.php?page=product-category-data&id=${encodeURIComponent(productId)}`, { credentials: 'same-origin' })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => (data?.categories || []).forEach((name) => [...categorySelect.options].forEach((option) => { if (option.value === name) option.selected = true; })))
+      .catch(() => {});
+  }
   categorySelect?.addEventListener('change', syncCategoryField);
   syncCategoryField();
 

@@ -9,15 +9,15 @@ $category = trim((string) ($_GET['category'] ?? ''));
 $where = ['p.is_active = 1', 'p.sale_price > 0', 'p.list_price > 0', 'p.sale_price <> p.list_price'];
 $params = [];
 if ($query !== '') {
-    $where[] = '(p.name LIKE ? OR p.category LIKE ?)';
+    $where[] = '(p.name LIKE ? OR pc.category_name LIKE ?)';
     $params[] = '%' . $query . '%';
     $params[] = '%' . $query . '%';
 }
 if ($category !== '') {
-    $where[] = 'p.category = ?';
+    $where[] = 'pc.category_name = ?';
     $params[] = $category;
 }
-$statement = $pdo->prepare('SELECT p.* FROM pelish_products p WHERE ' . implode(' AND ', $where) . ' ORDER BY p.created_at DESC, p.id DESC');
+$statement = $pdo->prepare('SELECT DISTINCT p.* FROM pelish_products p INNER JOIN pelish_product_categories pc ON pc.product_id = p.id WHERE ' . implode(' AND ', $where) . ' ORDER BY p.created_at DESC, p.id DESC');
 $statement->execute($params);
 $products = $statement->fetchAll();
 $categories = store_active_categories($pdo, true);
